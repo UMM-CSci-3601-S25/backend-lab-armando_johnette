@@ -1,4 +1,4 @@
-package umm3601.userTodos;
+package umm3601.todos;
 import java.util.List;
 
 @SuppressWarnings("checkstyle:visibilitymodifier")

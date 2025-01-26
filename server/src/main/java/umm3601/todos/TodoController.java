@@ -1,4 +1,4 @@
-package umm3601.userTodos;
+package umm3601.todos;
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.regex;
@@ -28,12 +28,12 @@ import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.NotFoundResponse;
 import umm3601.Controller;
-import umm3601.user.UserByCompany;
+//import umm3601.todos.TodoByCategory;;
 
 public class TodoController implements Controller {
 
   private static final String API_TODOS = "/api/todos";
-  private static final String API_USER_BY_ID = "/api/todos/{id}";
+  private static final String API_TODO_BY_ID = "/api/todos/{id}";
   static final String BODY_KEY = "body";
   static final String CATEGORY_KEY = "category";
   static final String STATUS_KEY = "status";
@@ -244,7 +244,7 @@ public class TodoController implements Controller {
    * @param ctx a Javalin HTTP context that provides the user info
    *  in the JSON body of the request
    */
-  public void addNewUser(Context ctx) {
+  public void addNewTodo(Context ctx) {
     /*
      * The follow chain of statements uses the Javalin validator system
      * to verify that instance of `User` provided in this context is
@@ -260,10 +260,10 @@ public class TodoController implements Controller {
      * `BadRequestResponse` with an appropriate error message.
      */
     String body = ctx.body();
-    Todo newUser = ctx.bodyValidator(Todo.class)
-      .check(usr -> usr.body != null && usr.body.length() > 0,
+    Todo newTodo = ctx.bodyValidator(Todo.class)
+      .check(todo -> todo.body != null && todo.body.length() > 0,
         "User must have a non-empty todo ; body was " + body)
-      .check(usr -> usr.status.matches(ROLE_REGEX),
+      .check(todo -> todo.status.matches(ROLE_REGEX),
         "User must have an assigned owner; body was " + body)
       .check(usr -> usr.owner > 0,
         //"User's age must be greater than zero; body was " + body)
@@ -279,13 +279,13 @@ public class TodoController implements Controller {
     //newUser.avatar = generateAvatar(newUser.email);
 
     // Add the new user to the database
-    todoCollection.insertOne(newUser);
+    todoCollection.insertOne(newTodo);
 
     // Set the JSON response to be the `_id` of the newly created user.
     // This gives the client the opportunity to know the ID of the new user,
     // which it can then use to perform further operations (e.g., a GET request
     // to get and display the details of the new user).
-    ctx.json(Map.of("id", newUser._id));
+    ctx.json(Map.of("id", newTodo._id));
     // 201 (`HttpStatus.CREATED`) is the HTTP code for when we successfully
     // create a new resource (a user in this case).
     // See, e.g., https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
@@ -380,7 +380,7 @@ public class TodoController implements Controller {
    */
   public void addRoutes(Javalin server) {
     // Get the specified user
-    server.get(API_USER_BY_ID, this::getUser);
+    server.get(API_TODO_BY_ID, this::getUser);
 
     // List users, filtered using query parameters
     server.get(API_TODOS, this::getTodos);
@@ -390,10 +390,10 @@ public class TodoController implements Controller {
 
     // Add new user with the user info being in the JSON body
     // of the HTTP request
-    server.post(API_TODOS, this::addNewUser);
+    server.post(API_TODOS, this::addNewTodo);
 
     // Delete the specified user
-    server.delete(API_TODOS_BY_ID, this::deleteTodos);
+    server.delete(API_TODO_BY_ID, this::deleteUser);
   }
 }
 
