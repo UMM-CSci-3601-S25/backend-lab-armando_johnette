@@ -12,10 +12,10 @@ public class Todo {
 
   public String _id;
   public String body;
-  public String status;
-  public int owner;
+  public boolean status;
+  public String owner;
   public String category;
-  public String $oid;
+
 
   @Override
   public boolean equals(Object obj) {

@@ -64,7 +64,7 @@ public class TodoController implements Controller {
    *
    * @param ctx a Javalin HTTP context
    */
-  public void getUser(Context ctx) {
+  public void getTodo(Context ctx) {
     String id = ctx.pathParam("id");
     Todo todo;
 
@@ -214,13 +214,13 @@ public class TodoController implements Controller {
       .aggregate(
         List.of(
           // Project the fields we want to use in the next step, i.e., the _id, name, and company fields
-          new Document("$project", new Document("_id", 1).append("name", 1).append("company", 1)),
+          new Document("$project", new Document("_id", 1).append("status", 1).append("category", 1)),
           // Group the users by company, and count the number of users in each company
-          new Document("$group", new Document("_id", "$company")
+          new Document("$group", new Document("_id", "$category")
             // Count the number of users in each company
             .append("count", new Document("$sum", 1))
             // Collect the user names and IDs for each user in each company
-            .append("users", new Document("$push", new Document("_id", "$_id").append("name", "$name")))),
+            .append("users", new Document("$push", new Document("_id", "$_id").append("status", "$name")))),
           // Sort the results. Use the `sortby` query param (default "company")
           // as the field to sort by, and the query param `sortorder` (default
           // "asc") to specify the sort order.
@@ -258,17 +258,17 @@ public class TodoController implements Controller {
      *    - A non-blank company is provided
      * If any of these checks fail, the Javalin system will throw a
      * `BadRequestResponse` with an appropriate error message.
-     */
+     *///////////
     String body = ctx.body();
     Todo newTodo = ctx.bodyValidator(Todo.class)
       .check(todo -> todo.body != null && todo.body.length() > 0,
         "User must have a non-empty todo ; body was " + body)
-      .check(todo -> todo.status.matches(ROLE_REGEX),
-        "User must have an assigned owner; body was " + body)
-      .check(todo -> todo.owner > 0,
-        //"User's age must be greater than zero; body was " + body)
-      //.check(usr -> usr.age < REASONABLE_AGE_LIMIT,
-        "User's age must be less than " + REASONABLE_AGE_LIMIT + "; body was " + body)
+      // .check(todo -> todo.status.matches(ROLE_REGEX),
+      //   "User must have an assigned owner; body was " + body)
+      // .check(todo -> todo.owner > 0,
+      //   //"User's age must be greater than zero; body was " + body)
+      // //.check(usr -> usr.age < REASONABLE_AGE_LIMIT,
+      //   "User's age must be less than " + REASONABLE_AGE_LIMIT + "; body was " + body)
       //.check(usr -> usr.status.matches(ROLE_REGEX),
        // "User must have a legal user role; body was " + body)
       .check(usr -> usr.category != null && usr.category.length() > 0,
@@ -380,7 +380,7 @@ public class TodoController implements Controller {
    */
   public void addRoutes(Javalin server) {
     // Get the specified user
-    server.get(API_TODO_BY_ID, this::getUser);
+    server.get(API_TODO_BY_ID, this::getTodo);
 
     // List users, filtered using query parameters
     server.get(API_TODOS, this::getTodos);
@@ -393,7 +393,7 @@ public class TodoController implements Controller {
     server.post(API_TODOS, this::addNewTodo);
 
     // Delete the specified user
-    server.delete(API_TODO_BY_ID, this::deleteUser);
+    server.delete(API_TODO_BY_ID, this::deleteTodo);
   }
 }
 
