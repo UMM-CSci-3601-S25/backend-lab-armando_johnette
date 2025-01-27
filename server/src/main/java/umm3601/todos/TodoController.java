@@ -265,7 +265,7 @@ public class TodoController implements Controller {
         "User must have a non-empty todo ; body was " + body)
       .check(todo -> todo.status.matches(ROLE_REGEX),
         "User must have an assigned owner; body was " + body)
-      .check(usr -> usr.owner > 0,
+      .check(todo -> todo.owner > 0,
         //"User's age must be greater than zero; body was " + body)
       //.check(usr -> usr.age < REASONABLE_AGE_LIMIT,
         "User's age must be less than " + REASONABLE_AGE_LIMIT + "; body was " + body)
@@ -298,7 +298,7 @@ public class TodoController implements Controller {
    *
    * @param ctx a Javalin HTTP context
    */
-  public void deleteUser(Context ctx) {
+  public void deleteTodo(Context ctx) {
     String id = ctx.pathParam("id");
     DeleteResult deleteResult = todoCollection.deleteOne(eq("_id", new ObjectId(id)));
     // We should have deleted 1 or 0 users, depending on whether `id` is a valid user ID.
