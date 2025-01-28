@@ -1174,3 +1174,5 @@ class TodoControllerSpec {
   }
 }
 
+
+  void canGetUsersWithAge37Redux() throws JsonMappingException, JsonProcessingException {
