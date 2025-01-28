@@ -27,7 +27,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;S
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -55,6 +55,8 @@ import io.javalin.validation.ValidationError;
 import io.javalin.validation.ValidationException;
 import io.javalin.validation.Validator;
 import umm3601.todos.Todo;
+import umm3601.todos.TodoController;
+import umm3601.todos.TodoByCategory;
 
 /**
  * Tests the logic of the UserController
@@ -70,10 +72,10 @@ import umm3601.todos.Todo;
 // flag as a problem) make more sense.
 @SuppressWarnings({ "MagicNumber" })
 class TodoControllerSpec {
+  private TodoController todoController;
 
   // An instance of the controller we're testing that is prepared in
   // `setupEach()`, and then exercised in the various tests below.
-  private TodoController TodoController;
 
   // A Mongo object ID that is initialized in `setupEach()` and used
   // in a few of the tests. It isn't used all that often, though,
@@ -93,10 +95,10 @@ class TodoControllerSpec {
   private Context ctx;
 
   @Captor
-  private ArgumentCaptor<ArrayList<Todo>> userArrayListCaptor;
+  private ArgumentCaptor<ArrayList<Todo>> todoArrayListCaptor;
 
   @Captor
-  private ArgumentCaptor<Todo> userCaptor;
+  private ArgumentCaptor<Todo> todoCaptor;
 
   @Captor
   private ArgumentCaptor<Map<String, String>> mapCaptor;
@@ -135,54 +137,41 @@ class TodoControllerSpec {
     MockitoAnnotations.openMocks(this);
 
     // Setup database
-    MongoCollection<Document> userDocuments = db.getCollection("todos");
-    userDocuments.drop();
-    List<Document> testUsers = new ArrayList<>();
-    testUsers.add(
+    MongoCollection<Document> todoDocuments = db.getCollection("todos");
+    todoDocuments.drop();
+    List<Document> testTodos = new ArrayList<>();
+    testTodos.add(
         new Document()
-            .append("name", "Chris")
-            .append("age", 25)
-            .append("company", "UMM")
-            .append("email", "chris@this.that")
-            .append("role", "admin")
-            .append("avatar", "https://gravatar.com/avatar/8c9616d6cc5de638ea6920fb5d65fc6c?d=identicon"));
-    testUsers.add(
+            .append("owner", "Blanche")
+            .append("category", "homework")
+            .append("status", "true"));
+     testTodos.add(
         new Document()
-            .append("name", "Pat")
-            .append("age", 37)
-            .append("company", "IBM")
-            .append("email", "pat@something.com")
-            .append("role", "editor")
-            .append("avatar", "https://gravatar.com/avatar/b42a11826c3bde672bce7e06ad729d44?d=identicon"));
-    testUsers.add(
-        new Document()
-            .append("name", "Jamie")
-            .append("age", 37)
-            .append("company", "OHMNET")
-            .append("email", "jamie@frogs.com")
-            .append("role", "viewer")
-            .append("avatar", "https://gravatar.com/avatar/d4a6c71dd9470ad4cf58f78c100258bf?d=identicon"));
-
+            .append("owner", "Fry")
+            .append("category", "video games")
+            .append("status", "false"));
+            testTodos.add(
+              new Document()
+                  .append("owner", "Dawn")
+                  .append("category", "homework")
+                  .append("status", "true"));
     samsId = new ObjectId();
     Document sam = new Document()
         .append("_id", samsId)
-        .append("name", "Sam")
-        .append("age", 45)
-        .append("company", "OHMNET")
-        .append("email", "sam@frogs.com")
-        .append("role", "viewer")
-        .append("avatar", "https://gravatar.com/avatar/08b7610b558a4cbbd20ae99072801f4d?d=identicon");
+        .append("owner", "Sam")
+        .append("status", true)
+        .append("category", "homework");
 
-    userDocuments.insertMany(testUsers);
-    userDocuments.insertOne(sam);
+    todoDocuments.insertMany(testTodos);
+    todoDocuments.insertOne(sam);
 
-    TodoController = new TodoController(db);
+    todoController = new TodoController(db);
   }
 
   @Test
   void addsRoutes() {
     Javalin mockServer = mock(Javalin.class);
-    TodoController.addRoutes(mockServer);
+    todoController.addRoutes(mockServer);
     verify(mockServer, Mockito.atLeast(3)).get(any(), any());
     verify(mockServer, Mockito.atLeastOnce()).post(any(), any());
     verify(mockServer, Mockito.atLeastOnce()).delete(any(), any());
@@ -197,7 +186,7 @@ class TodoControllerSpec {
 
     // Now, go ahead and ask the userController to getUsers
     // (which will, indeed, ask the context for its queryParamMap)
-    userController.getUsers(ctx);
+    todoController.getTodos(ctx);
 
     // We are going to capture an argument to a function, and the type of
     // that argument will be of type ArrayList<User> (we said so earlier
@@ -212,14 +201,14 @@ class TodoControllerSpec {
     // Specifically, we want to pay attention to the ArrayList<User> that
     // is passed as input when ctx.json is called --- what is the argument
     // that was passed? We capture it and can refer to it later.
-    verify(ctx).json(userArrayListCaptor.capture());
+    verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Check that the database collection holds the same number of documents
     // as the size of the captured List<User>
     assertEquals(
-        db.getCollection("users").countDocuments(),
-        userArrayListCaptor.getValue().size());
+        db.getCollection("todo").countDocuments(),
+        todoArrayListCaptor.getValue().size());
   }
 
   /**
@@ -255,58 +244,58 @@ class TodoControllerSpec {
    *
    * @throws IOException
    */
-  @Test
-  void canGetUsersWithAge37() throws IOException {
-    // We'll need both `String` and `Integer` representations of
-    // the target age, so I'm defining both here.
-    Integer targetAge = 37;
-    String targetAgeString = targetAge.toString();
+  // @Test
+  // void canGetUsersWithAge37() throws IOException {
+  //   // We'll need both `String` and `Integer` representations of
+  //   // the target age, so I'm defining both here.
+  //   Integer targetAge = 37;
+  //   String targetAgeString = targetAge.toString();
 
-    // Create a `Map` for the `queryParams` that will "return" the string
-    // "37" if you ask for the value associated with the `AGE_KEY`.
-    Map<String, List<String>> queryParams = new HashMap<>();
+  //   // Create a `Map` for the `queryParams` that will "return" the string
+  //   // "37" if you ask for the value associated with the `AGE_KEY`.
+  //   Map<String, List<String>> queryParams = new HashMap<>();
 
-    queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {targetAgeString}));
-    // When the code being tested calls `ctx.queryParamMap()` return the
-    // the `queryParams` map we just built.
-    when(ctx.queryParamMap()).thenReturn(queryParams);
-    // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-    // `targetAgeString`.
-    when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
+  //   //queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {targetAgeString}));
+  //   // When the code being tested calls `ctx.queryParamMap()` return the
+  //   // the `queryParams` map we just built.
+  //   when(ctx.queryParamMap()).thenReturn(queryParams);
+  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
+  //   // `targetAgeString`.
+  //   //when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `AGE_KEY` _as an integer_, we get back the integer value 37.
-    Validation validation = new Validation();
-    // The `AGE_KEY` should be name of the key whose value is being validated.
-    // You can actually put whatever you want here, because it's only used in the generation
-    // of testing error reports, but using the actually key value will make those reports more informative.
-    Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
-    // When the code being tested calls `ctx.queryParamAsClass("age", Integer.class)`
-    // we'll return the `Validator` we just constructed.
-    when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class))
-        .thenReturn(validator);
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `AGE_KEY` _as an integer_, we get back the integer value 37.
+  //   Validation validation = new Validation();
+  //   // The `AGE_KEY` should be name of the key whose value is being validated.
+  //   // You can actually put whatever you want here, because it's only used in the generation
+  //   // of testing error reports, but using the actually key value will make those reports more informative.
+  //   //Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
+  //   // When the code being tested calls `ctx.queryParamAsClass("age", Integer.class)`
+  //   // we'll return the `Validator` we just constructed.
+  //   //when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class))
+  //   //    .thenReturn(validator);
 
-    userController.getUsers(ctx);
+  //   todoController.getTodo(ctx);
 
-    // Confirm that the code being tested calls `ctx.json(…)`, and capture whatever
-    // is passed in as the argument when `ctx.json()` is called.
-    verify(ctx).json(userArrayListCaptor.capture());
-    // Confirm that the code under test calls `ctx.status(HttpStatus.OK)` is called.
-    verify(ctx).status(HttpStatus.OK);
+  //   // Confirm that the code being tested calls `ctx.json(…)`, and capture whatever
+  //   // is passed in as the argument when `ctx.json()` is called.
+  //   verify(ctx).json(userArrayListCaptor.capture());
+  //   // Confirm that the code under test calls `ctx.status(HttpStatus.OK)` is called.
+  //   verify(ctx).status(HttpStatus.OK);
 
-    // Confirm that we get back two users.
-    assertEquals(2, userArrayListCaptor.getValue().size());
-    // Confirm that both users have age 37.
-    for (User user : userArrayListCaptor.getValue()) {
-      assertEquals(targetAge, user.age);
-    }
-    // Generate a list of the names of the returned users.
-    List<String> names = userArrayListCaptor.getValue().stream().map(user -> user.name).collect(Collectors.toList());
-    // Confirm that the returned `names` contain the two names of the
-    // 37-year-olds.
-    assertTrue(names.contains("Jamie"));
-    assertTrue(names.contains("Pat"));
-  }
+  //   // Confirm that we get back two users.
+  //   assertEquals(2, userArrayListCaptor.getValue().size());
+  //   // Confirm that both users have age 37.
+  //   // for (User user : userArrayListCaptor.getValue()) {
+  //   //   assertEquals(targetAge, user.age);
+  //   // }
+  //   // Generate a list of the names of the returned users.
+  //   List<String> names = userArrayListCaptor.getValue().stream().map(user -> user.name).collect(Collectors.toList());
+  //   // Confirm that the returned `names` contain the two names of the
+  //   // 37-year-olds.
+  //   assertTrue(names.contains("Jamie"));
+  //   assertTrue(names.contains("Pat"));
+  // }
 
   /**
    * Confirm that if we process a request for users with age 37,
@@ -327,207 +316,207 @@ class TodoControllerSpec {
    * @throws JsonMappingException
    * @throws JsonProcessingException
    */
-  @Test
-  void canGetUsersWithAge37Redux() throws JsonMappingException, JsonProcessingException {
-    // We'll need both `String` and `Integer` representations of
-    // the target age, so I'm defining both here.
-    Integer targetAge = 37;
-    String targetAgeString = targetAge.toString();
+  // @Test
+  // void canGetUsersWithAge37Redux() throws JsonMappingException, JsonProcessingException {
+  //   // We'll need both `String` and `Integer` representations of
+  //   // the target age, so I'm defining both here.
+  //   Integer targetAge = 37;
+  //   String targetAgeString = targetAge.toString();
 
-    // When the controller calls `ctx.queryParamMap`, return the expected map for an
-    // "?age=37" query.
-    when(ctx.queryParamMap()).thenReturn(Map.of(UserController.AGE_KEY, List.of(targetAgeString)));
-    // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-    // `targetAgeString`.
-    when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
+  //   // When the controller calls `ctx.queryParamMap`, return the expected map for an
+  //   // "?age=37" query.
+  //   when(ctx.queryParamMap()).thenReturn(Map.of(UserController.AGE_KEY, List.of(targetAgeString)));
+  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
+  //   // `targetAgeString`.
+  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `AGE_KEY` _as an integer_, we get back the integer value 37.
-    Validation validation = new Validation();
-    // The `AGE_KEY` should be name of the key whose value is being validated.
-    // You can actually put whatever you want here, because it's only used in the generation
-    // of testing error reports, but using the actually key value will make those reports more informative.
-    Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
-    when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `AGE_KEY` _as an integer_, we get back the integer value 37.
+  //   Validation validation = new Validation();
+  //   // The `AGE_KEY` should be name of the key whose value is being validated.
+  //   // You can actually put whatever you want here, because it's only used in the generation
+  //   // of testing error reports, but using the actually key value will make those reports more informative.
+  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
+  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
 
-    // Call the method under test.
-    userController.getUsers(ctx);
+  //   // Call the method under test.
+  //   userController.getUsers(ctx);
 
-    // Verify that `getUsers` included a call to `ctx.status(HttpStatus.OK)` at some
-    // point.
-    verify(ctx).status(HttpStatus.OK);
+  //   // Verify that `getUsers` included a call to `ctx.status(HttpStatus.OK)` at some
+  //   // point.
+  //   verify(ctx).status(HttpStatus.OK);
 
-    // Verify that `ctx.json()` is called with a `List` of `User`s.
-    // Each of those `User`s should have age 37.
-    verify(ctx).json(argThat(new ArgumentMatcher<List<User>>() {
-      @Override
-      public boolean matches(List<User> users) {
-        for (User user : users) {
-          assertEquals(targetAge, user.age);
-        }
-        assertEquals(2, users.size());
-        return true;
-      }
-    }));
-  }
+  //   // Verify that `ctx.json()` is called with a `List` of `User`s.
+  //   // Each of those `User`s should have age 37.
+  //   verify(ctx).json(argThat(new ArgumentMatcher<List<User>>() {
+  //     @Override
+  //     public boolean matches(List<User> users) {
+  //       for (User user : users) {
+  //         assertEquals(targetAge, user.age);
+  //       }
+  //       assertEquals(2, users.size());
+  //       return true;
+  //     }
+  //   }));
+  // }
 
   /**
    * Test that if the user sends a request with an illegal value in
    * the age field (i.e., something that can't be parsed to a number)
    * we get a reasonable error back.
    */
-  @Test
-  void respondsAppropriatelyToNonNumericAge() {
-    Map<String, List<String>> queryParams = new HashMap<>();
-    String illegalIntegerString = "bad integer string";
-    queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {illegalIntegerString}));
-    when(ctx.queryParamMap()).thenReturn(queryParams);
-    // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-    // `illegalIntegerString`.
-    when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(illegalIntegerString);
+  // @Test
+  // void respondsAppropriatelyToNonNumericAge() {
+  //   Map<String, List<String>> queryParams = new HashMap<>();
+  //   String illegalIntegerString = "bad integer string";
+  //   queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {illegalIntegerString}));
+  //   when(ctx.queryParamMap()).thenReturn(queryParams);
+  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
+  //   // `illegalIntegerString`.
+  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(illegalIntegerString);
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `AGE_KEY` _as an integer_, we get back the `illegalIntegerString`.
-    Validation validation = new Validation();
-    // The `AGE_KEY` should be name of the key whose value is being validated.
-    // You can actually put whatever you want here, because it's only used in the generation
-    // of testing error reports, but using the actually key value will make those reports more informative.
-    Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, illegalIntegerString);
-    when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `AGE_KEY` _as an integer_, we get back the `illegalIntegerString`.
+  //   Validation validation = new Validation();
+  //   // The `AGE_KEY` should be name of the key whose value is being validated.
+  //   // You can actually put whatever you want here, because it's only used in the generation
+  //   // of testing error reports, but using the actually key value will make those reports more informative.
+  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, illegalIntegerString);
+  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
 
-    // This should now throw a `ValidationException` because
-    // our request has an age that can't be parsed to a number.
-    ValidationException exception = assertThrows(ValidationException.class, () -> {
-      userController.getUsers(ctx);
-    });
-    // This digs into the returned `ValidationException` to get the underlying `Exception` that caused
-    // the validation to fail:
-    //   - `exception.getErrors` returns a `Map` that maps keys (like `AGE_KEY`) to lists of
-    //      validation errors for that key
-    //   - `.get(AGE_KEY)` returns a list of all the validation errors associated with `AGE_KEY`
-    //   - `.get(0)` assumes that the root cause is the first error in the list. In our case there
-    //     is only one root cause,
-    //     so that's safe, but you might be careful about that assumption in other contexts.
-    //   - `.exception()` gets the actually `Exception` value that was the underlying cause
-    Exception exceptionCause = exception.getErrors().get(UserController.AGE_KEY).get(0).exception();
-    // The cause should have been a `NumberFormatException` (what is thrown when we try to parse "bad" as an integer).
-    assertEquals(NumberFormatException.class, exceptionCause.getClass());
-    // The message for that `NumberFOrmatException` should include the text it tried to parse as an integer,
-    // i.e., `"bad integer string"`.
-    assertTrue(exceptionCause.getMessage().contains(illegalIntegerString));
-  }
+  //   // This should now throw a `ValidationException` because
+  //   // our request has an age that can't be parsed to a number.
+  //   ValidationException exception = assertThrows(ValidationException.class, () -> {
+  //     userController.getUsers(ctx);
+  //   });
+  //   // This digs into the returned `ValidationException` to get the underlying `Exception` that caused
+  //   // the validation to fail:
+  //   //   - `exception.getErrors` returns a `Map` that maps keys (like `AGE_KEY`) to lists of
+  //   //      validation errors for that key
+  //   //   - `.get(AGE_KEY)` returns a list of all the validation errors associated with `AGE_KEY`
+  //   //   - `.get(0)` assumes that the root cause is the first error in the list. In our case there
+  //   //     is only one root cause,
+  //   //     so that's safe, but you might be careful about that assumption in other contexts.
+  //   //   - `.exception()` gets the actually `Exception` value that was the underlying cause
+  //   Exception exceptionCause = exception.getErrors().get(UserController.AGE_KEY).get(0).exception();
+  //   // The cause should have been a `NumberFormatException` (what is thrown when we try to parse "bad" as an integer).
+  //   assertEquals(NumberFormatException.class, exceptionCause.getClass());
+  //   // The message for that `NumberFOrmatException` should include the text it tried to parse as an integer,
+  //   // i.e., `"bad integer string"`.
+  //   assertTrue(exceptionCause.getMessage().contains(illegalIntegerString));
+  // }
 
   /**
    * Test that if the user sends a request with an illegal value in
    * the age field (i.e., too big of a number)
    * we get a reasonable error code back.
    */
-  @Test
-  void respondsAppropriatelyToTooLargeNumberAge() {
-    Map<String, List<String>> queryParams = new HashMap<>();
-    String overlyLargeAgeString = "151";
-    queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {overlyLargeAgeString}));
-    when(ctx.queryParamMap()).thenReturn(queryParams);
-    // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-    // `overlyLargeAgeString`.
-    when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(overlyLargeAgeString);
+  // @Test
+  // void respondsAppropriatelyToTooLargeNumberAge() {
+  //   Map<String, List<String>> queryParams = new HashMap<>();
+  //   String overlyLargeAgeString = "151";
+  //   queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {overlyLargeAgeString}));
+  //   when(ctx.queryParamMap()).thenReturn(queryParams);
+  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
+  //   // `overlyLargeAgeString`.
+  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(overlyLargeAgeString);
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `AGE_KEY` _as an integer_, we get back the integer value 37.
-    Validation validation = new Validation();
-    // The `AGE_KEY` should be name of the key whose value is being validated.
-    // You can actually put whatever you want here, because it's only used in the generation
-    // of testing error reports, but using the actually key value will make those reports more informative.
-    Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, overlyLargeAgeString);
-    when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `AGE_KEY` _as an integer_, we get back the integer value 37.
+  //   Validation validation = new Validation();
+  //   // The `AGE_KEY` should be name of the key whose value is being validated.
+  //   // You can actually put whatever you want here, because it's only used in the generation
+  //   // of testing error reports, but using the actually key value will make those reports more informative.
+  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, overlyLargeAgeString);
+  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
 
-    // This should now throw a `ValidationException` because
-    // our request has an age that is larger than 150, which isn't allowed.
-    ValidationException exception = assertThrows(ValidationException.class, () -> {
-      userController.getUsers(ctx);
-    });
-    // This `ValidationException` was caused by a custom check, so we just get the message from the first
-    // error and confirm that it contains the problematic string, since that would be useful information
-    // for someone trying to debug a case where this validation fails.
-    String exceptionMessage = exception.getErrors().get(UserController.AGE_KEY).get(0).getMessage();
-    // The message should be the message from our code under test, which should include the text we
-    // tried to parse as an age, namely "151".
-    assertTrue(exceptionMessage.contains(overlyLargeAgeString));
-  }
+  //   // This should now throw a `ValidationException` because
+  //   // our request has an age that is larger than 150, which isn't allowed.
+  //   ValidationException exception = assertThrows(ValidationException.class, () -> {
+  //     userController.getUsers(ctx);
+  //   });
+  //   // This `ValidationException` was caused by a custom check, so we just get the message from the first
+  //   // error and confirm that it contains the problematic string, since that would be useful information
+  //   // for someone trying to debug a case where this validation fails.
+  //   String exceptionMessage = exception.getErrors().get(UserController.AGE_KEY).get(0).getMessage();
+  //   // The message should be the message from our code under test, which should include the text we
+  //   // tried to parse as an age, namely "151".
+  //   assertTrue(exceptionMessage.contains(overlyLargeAgeString));
+  // }
 
   /**
    * Test that if the user sends a request with an illegal value in
    * the age field (i.e., too small of a number)
    * we get a reasonable error code back.
    */
+  // @Test
+  // void respondsAppropriatelyToTooSmallNumberAge() {
+  //   Map<String, List<String>> queryParams = new HashMap<>();
+  //   String negativeAgeString = "-1";
+  //   queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {negativeAgeString}));
+  //   when(ctx.queryParamMap()).thenReturn(queryParams);
+  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
+  //   // `negativeAgeString`.
+  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(negativeAgeString);
+
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `AGE_KEY` _as an integer_, we get back the string value `negativeAgeString`.
+  //   Validation validation = new Validation();
+  //   // The `AGE_KEY` should be name of the key whose value is being validated.
+  //   // You can actually put whatever you want here, because it's only used in the generation
+  //   // of testing error reports, but using the actually key value will make those reports more informative.
+  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, negativeAgeString);
+  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
+
+  //   // This should now throw a `ValidationException` because
+  //   // our request has an age that is larger than 150, which isn't allowed.
+  //   ValidationException exception = assertThrows(ValidationException.class, () -> {
+  //     userController.getUsers(ctx);
+  //   });
+  //   // This `ValidationException` was caused by a custom check, so we just get the message from the first
+  //   // error and confirm that it contains the problematic string, since that would be useful information
+  //   // for someone trying to debug a case where this validation fails.
+  //   String exceptionMessage = exception.getErrors().get(UserController.AGE_KEY).get(0).getMessage();
+  //   // The message should be the message from our code under test, which should include the text we
+  //   // tried to parse as an age, namely "-1".
+  //   assertTrue(exceptionMessage.contains(negativeAgeString));
+  // }
+
   @Test
-  void respondsAppropriatelyToTooSmallNumberAge() {
+  void canGetTodosWithCategory() throws IOException {
     Map<String, List<String>> queryParams = new HashMap<>();
-    String negativeAgeString = "-1";
-    queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {negativeAgeString}));
+    queryParams.put(TodoController.CATEGORY_KEY, Arrays.asList(new String[] {"true"}));
+    queryParams.put(TodoController.SORT_ORDER_KEY, Arrays.asList(new String[] {"desc"}));
     when(ctx.queryParamMap()).thenReturn(queryParams);
-    // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-    // `negativeAgeString`.
-    when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(negativeAgeString);
+    when(ctx.queryParam(TodoController.CATEGORY_KEY)).thenReturn("true");
+    when(ctx.queryParam(TodoController.SORT_ORDER_KEY)).thenReturn("desc");
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `AGE_KEY` _as an integer_, we get back the string value `negativeAgeString`.
-    Validation validation = new Validation();
-    // The `AGE_KEY` should be name of the key whose value is being validated.
-    // You can actually put whatever you want here, because it's only used in the generation
-    // of testing error reports, but using the actually key value will make those reports more informative.
-    Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, negativeAgeString);
-    when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
+    todoController.getTodos(ctx);
 
-    // This should now throw a `ValidationException` because
-    // our request has an age that is larger than 150, which isn't allowed.
-    ValidationException exception = assertThrows(ValidationException.class, () -> {
-      userController.getUsers(ctx);
-    });
-    // This `ValidationException` was caused by a custom check, so we just get the message from the first
-    // error and confirm that it contains the problematic string, since that would be useful information
-    // for someone trying to debug a case where this validation fails.
-    String exceptionMessage = exception.getErrors().get(UserController.AGE_KEY).get(0).getMessage();
-    // The message should be the message from our code under test, which should include the text we
-    // tried to parse as an age, namely "-1".
-    assertTrue(exceptionMessage.contains(negativeAgeString));
-  }
-
-  @Test
-  void canGetUsersWithCompany() throws IOException {
-    Map<String, List<String>> queryParams = new HashMap<>();
-    queryParams.put(UserController.COMPANY_KEY, Arrays.asList(new String[] {"OHMNET"}));
-    queryParams.put(UserController.SORT_ORDER_KEY, Arrays.asList(new String[] {"desc"}));
-    when(ctx.queryParamMap()).thenReturn(queryParams);
-    when(ctx.queryParam(UserController.COMPANY_KEY)).thenReturn("OHMNET");
-    when(ctx.queryParam(UserController.SORT_ORDER_KEY)).thenReturn("desc");
-
-    userController.getUsers(ctx);
-
-    verify(ctx).json(userArrayListCaptor.capture());
+    verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
-    for (User user : userArrayListCaptor.getValue()) {
-      assertEquals("OHMNET", user.company);
+    for (Todo todo : todoArrayListCaptor.getValue()) {
+      assertEquals("true", todo.category);
     }
   }
 
   @Test
-  void canGetUsersWithCompanyLowercase() throws IOException {
+  void canGetTodosWithCategoryLowercase() throws IOException {
     Map<String, List<String>> queryParams = new HashMap<>();
-    queryParams.put(UserController.COMPANY_KEY, Arrays.asList(new String[] {"ohm"}));
+    queryParams.put(TodoController.CATEGORY_KEY, Arrays.asList(new String[] {"ohm"}));
     when(ctx.queryParamMap()).thenReturn(queryParams);
-    when(ctx.queryParam(UserController.COMPANY_KEY)).thenReturn("ohm");
+    when(ctx.queryParam(TodoController.CATEGORY_KEY)).thenReturn("ohm");
 
-    userController.getUsers(ctx);
+    todoController.getTodo(ctx);
 
-    verify(ctx).json(userArrayListCaptor.capture());
+    verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
-    for (User user : userArrayListCaptor.getValue()) {
-      assertEquals("OHMNET", user.company);
+    for (Todo user : todoArrayListCaptor.getValue()) {
+      assertEquals("OHMNET", user.category);
     }
   }
 
@@ -535,71 +524,71 @@ class TodoControllerSpec {
   void getUsersByRole() throws IOException {
     Map<String, List<String>> queryParams = new HashMap<>();
     String roleString = "viewer";
-    queryParams.put(UserController.ROLE_KEY, Arrays.asList(new String[] {roleString}));
+    queryParams.put(TodoController.OWNER_KEY, Arrays.asList(new String[] {roleString}));
     when(ctx.queryParamMap()).thenReturn(queryParams);
 
     // Create a validator that confirms that when we ask for the value associated with
     // `ROLE_KEY` we get back a string that represents a legal role.
     Validation validation = new Validation();
-    Validator<String> validator = validation.validator(UserController.ROLE_KEY, String.class, roleString);
-    when(ctx.queryParamAsClass(UserController.ROLE_KEY, String.class)).thenReturn(validator);
+    Validator<String> validator = validation.validator(TodoController.OWNER_KEY, String.class, roleString);
+    when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
 
-    userController.getUsers(ctx);
+    todoController.getTodos(ctx);
 
-    verify(ctx).json(userArrayListCaptor.capture());
+    verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
-    assertEquals(2, userArrayListCaptor.getValue().size());
+    assertEquals(2, todoArrayListCaptor.getValue().size());
   }
 
-  @Test
-  void getUsersByCompanyAndAge() throws IOException {
-    String targetCompanyString = "OHMNET";
-    Integer targetAge = 37;
-    String targetAgeString = targetAge.toString();
+  // @Test
+  // void getUsersByCompanyAndAge() throws IOException {
+  //   String targetCompanyString = "OHMNET";
+  //   Integer targetAge = 37;
+  //   String targetAgeString = targetAge.toString();
 
-    Map<String, List<String>> queryParams = new HashMap<>();
-    queryParams.put(UserController.COMPANY_KEY, Arrays.asList(new String[] {targetCompanyString}));
-    queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {targetAgeString}));
-    when(ctx.queryParamMap()).thenReturn(queryParams);
-    when(ctx.queryParam(UserController.COMPANY_KEY)).thenReturn(targetCompanyString);
+  //   Map<String, List<String>> queryParams = new HashMap<>();
+  //   queryParams.put(UserController.COMPANY_KEY, Arrays.asList(new String[] {targetCompanyString}));
+  //   queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {targetAgeString}));
+  //   when(ctx.queryParamMap()).thenReturn(queryParams);
+  //   when(ctx.queryParam(UserController.COMPANY_KEY)).thenReturn(targetCompanyString);
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `AGE_KEY` _as an integer_, we get back the integer value 37.
-    Validation validation = new Validation();
-    Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
-    when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
-    when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `AGE_KEY` _as an integer_, we get back the integer value 37.
+  //   Validation validation = new Validation();
+  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
+  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
+  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
 
-    userController.getUsers(ctx);
+  //   userController.getUsers(ctx);
 
-    verify(ctx).json(userArrayListCaptor.capture());
-    verify(ctx).status(HttpStatus.OK);
-    assertEquals(1, userArrayListCaptor.getValue().size());
-    for (User user : userArrayListCaptor.getValue()) {
-      assertEquals(targetCompanyString, user.company);
-      assertEquals(targetAge, user.age);
-    }
-  }
+  //   verify(ctx).json(userArrayListCaptor.capture());
+  //   verify(ctx).status(HttpStatus.OK);
+  //   assertEquals(1, userArrayListCaptor.getValue().size());
+  //   for (User user : userArrayListCaptor.getValue()) {
+  //     assertEquals(targetCompanyString, user.company);
+  //     assertEquals(targetAge, user.age);
+  //   }
+  // }
 
-  @Test
-  void getUserWithExistentId() throws IOException {
-    String id = samsId.toHexString();
-    when(ctx.pathParam("id")).thenReturn(id);
+  // @Test
+  // void getUserWithExistentId() throws IOException {
+  //   String id = samsId.toHexString();
+  //   when(ctx.pathParam("id")).thenReturn(id);
 
-    userController.getUser(ctx);
+  //   userController.getUser(ctx);
 
-    verify(ctx).json(userCaptor.capture());
-    verify(ctx).status(HttpStatus.OK);
-    assertEquals("Sam", userCaptor.getValue().name);
-    assertEquals(samsId.toHexString(), userCaptor.getValue()._id);
-  }
+  //   verify(ctx).json(userCaptor.capture());
+  //   verify(ctx).status(HttpStatus.OK);
+  //   assertEquals("Sam", userCaptor.getValue().name);
+  //   assertEquals(samsId.toHexString(), userCaptor.getValue()._id);
+  // }
 
   @Test
   void getUserWithBadId() throws IOException {
     when(ctx.pathParam("id")).thenReturn("bad");
 
     Throwable exception = assertThrows(BadRequestResponse.class, () -> {
-      userController.getUser(ctx);
+      todoController.getTodo(ctx);
     });
 
     assertEquals("The requested user id wasn't a legal Mongo Object ID.", exception.getMessage());
@@ -611,26 +600,26 @@ class TodoControllerSpec {
     when(ctx.pathParam("id")).thenReturn(id);
 
     Throwable exception = assertThrows(NotFoundResponse.class, () -> {
-      userController.getUser(ctx);
+      todoController.getTodo(ctx);
     });
 
     assertEquals("The requested user was not found", exception.getMessage());
   }
 
   @Captor
-  private ArgumentCaptor<ArrayList<UserByCompany>> userByCompanyListCaptor;
+  private ArgumentCaptor<ArrayList<TodoByCategory>> userByCompanyListCaptor;
 
   @Test
   void testGetUsersGroupedByCompany() {
     when(ctx.queryParam("sortBy")).thenReturn("company");
     when(ctx.queryParam("sortOrder")).thenReturn("asc");
-    userController.getUsersGroupedByCompany(ctx);
+    todoController.getTodosGroupedByCategory(ctx);
 
     // Capture the argument to `ctx.json()`
     verify(ctx).json(userByCompanyListCaptor.capture());
 
     // Get the value that was passed to `ctx.json()`
-    ArrayList<UserByCompany> result = userByCompanyListCaptor.getValue();
+    ArrayList<TodoByCategory> result = userByCompanyListCaptor.getValue();
 
     // There are 3 companies in the test data, so we should have 3 entries in the
     // result.

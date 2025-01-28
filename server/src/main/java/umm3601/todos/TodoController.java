@@ -35,13 +35,14 @@ public class TodoController implements Controller {
   private static final String API_TODOS = "/api/todos";
   private static final String API_TODO_BY_ID = "/api/todos/{id}";
   static final String BODY_KEY = "body";
-  static final String CATEGORY_KEY = "category";
+  public static final String CATEGORY_KEY = "category";
   static final String STATUS_KEY = "status";
-  static final String SORT_ORDER_KEY = "sortorder";
-
+  public static final String SORT_ORDER_KEY = "sortorder";
+  public static final String OWNER_KEY = "owner";
   private static final int REASONABLE_AGE_LIMIT = 150;
   private static final String ROLE_REGEX = "^(admin|editor|viewer)$";
   public static final String EMAIL_REGEX = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
+  public static String COMPANY_KEY;
 
   private final JacksonMongoCollection<Todo> todoCollection;
 
