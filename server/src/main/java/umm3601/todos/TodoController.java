@@ -40,8 +40,8 @@ public class TodoController implements Controller {
   public static final String SORT_ORDER_KEY = "sortorder";
   public static final String OWNER_KEY = "owner";
   private static final int REASONABLE_AGE_LIMIT = 150;
-  private static final String ROLE_REGEX = "^(admin|editor|viewer)$";
-  public static final String EMAIL_REGEX = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$";
+  private static final String CATEGORY_REGEX = "^(homework|video games|groceries|software design)$";
+
   public static String COMPANY_KEY;
 
   private final JacksonMongoCollection<Todo> todoCollection;
@@ -54,7 +54,7 @@ public class TodoController implements Controller {
   public TodoController(MongoDatabase database) {
     todoCollection = JacksonMongoCollection.builder().build(
         database,
-        "todo",
+        "todos",
         Todo.class,
         UuidRepresentation.STANDARD);
   }
@@ -140,7 +140,7 @@ public class TodoController implements Controller {
     }
     if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
       String status = ctx.queryParamAsClass(STATUS_KEY, String.class)
-        .check(it -> it.matches(ROLE_REGEX), "User must have a legal user role")
+        .check(it -> it.matches(CATEGORY_REGEX), "User must have a legal user role")
         .get();
       filters.add(eq(STATUS_KEY, status));
     }
