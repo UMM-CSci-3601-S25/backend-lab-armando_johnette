@@ -56,6 +56,7 @@ import io.javalin.validation.ValidationException;
 import io.javalin.validation.Validator;
 import umm3601.todos.Todo;
 import umm3601.todos.TodoController;
+import umm3601.user.UserController;
 import umm3601.todos.TodoByCategory;
 
 /**
@@ -515,13 +516,13 @@ class TodoControllerSpec {
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
-    for (Todo user : todoArrayListCaptor.getValue()) {
-      assertEquals("OHMNET", user.category);
+    for (Todo todo : todoArrayListCaptor.getValue()) {
+      assertEquals("OHMNET", todo.category);
     }
   }
 
   @Test
-  void getUsersByRole() throws IOException {
+  void getTodosByRole() throws IOException {
     Map<String, List<String>> queryParams = new HashMap<>();
     String roleString = "viewer";
     queryParams.put(TodoController.OWNER_KEY, Arrays.asList(new String[] {roleString}));
@@ -584,7 +585,7 @@ class TodoControllerSpec {
   // }
 
   @Test
-  void getUserWithBadId() throws IOException {
+  void getTodoWithBadId() throws IOException {
     when(ctx.pathParam("id")).thenReturn("bad");
 
     Throwable exception = assertThrows(BadRequestResponse.class, () -> {
@@ -595,7 +596,7 @@ class TodoControllerSpec {
   }
 
   @Test
-  void getUserWithNonexistentId() throws IOException {
+  void getTodoWithNonexistentId() throws IOException {
     String id = "588935f5c668650dc77df581";
     when(ctx.pathParam("id")).thenReturn(id);
 
@@ -607,19 +608,19 @@ class TodoControllerSpec {
   }
 
   @Captor
-  private ArgumentCaptor<ArrayList<TodoByCategory>> userByCompanyListCaptor;
+  private ArgumentCaptor<ArrayList<TodoByCategory>> TodoByCategoryListCaptor;
 
   @Test
-  void testGetUsersGroupedByCompany() {
+  void testGetTodosGroupedByCompany() {
     when(ctx.queryParam("sortBy")).thenReturn("company");
     when(ctx.queryParam("sortOrder")).thenReturn("asc");
     todoController.getTodosGroupedByCategory(ctx);
 
     // Capture the argument to `ctx.json()`
-    verify(ctx).json(userByCompanyListCaptor.capture());
+    verify(ctx).json(TodoByCategoryListCaptor.capture());
 
     // Get the value that was passed to `ctx.json()`
-    ArrayList<TodoByCategory> result = userByCompanyListCaptor.getValue();
+    ArrayList<TodoByCategory> result = TodoByCategoryListCaptor.getValue();
 
     // There are 3 companies in the test data, so we should have 3 entries in the
     // result.
@@ -627,36 +628,36 @@ class TodoControllerSpec {
 
     // The companies should be in alphabetical order by company name,
     // and with user counts of 1, 2, and 1, respectively.
-    UserByCompany ibm = result.get(0);
+    TodoByCategory ibm = result.get(0);
     assertEquals("IBM", ibm._id);
-    assertEquals(1, ibm.count);
-    UserByCompany ohmnet = result.get(1);
+    assertEquals(1, ibm.body);
+    TodoByCategory ohmnet = result.get(1);
     assertEquals("OHMNET", ohmnet._id);
-    assertEquals(2, ohmnet.count);
-    UserByCompany umm = result.get(2);
+    assertEquals(2, ohmnet.body);
+    TodoByCategory umm = result.get(2);
     assertEquals("UMM", umm._id);
-    assertEquals(1, umm.count);
+    assertEquals(1, umm.body);
 
     // The users for OHMNET should be Jamie and Sam, although we don't
     // know what order they'll be in.
-    assertEquals(2, ohmnet.users.size());
-    assertTrue(ohmnet.users.get(0).name.equals("Jamie") || ohmnet.users.get(0).name.equals("Sam"),
+    assertEquals(2, ((Document) ohmnet.todos).size());
+    assertTrue(ohmnet.todos.get(0).name.equals("Jamie") || ohmnet.todos.get(0).name.equals("Sam"),
         "First user should have name 'Jamie' or 'Sam'");
-    assertTrue(ohmnet.users.get(1).name.equals("Jamie") || ohmnet.users.get(1).name.equals("Sam"),
+    assertTrue(ohmnet.todos.get(1).name.equals("Jamie") || ohmnet.todos.get(1).name.equals("Sam"),
         "Second user should have name 'Jamie' or 'Sam'");
   }
 
   @Test
-  void testGetUsersGroupedByCompanyDescending() {
+  void testGetTodosGroupedByCategoryDescending() {
     when(ctx.queryParam("sortBy")).thenReturn("company");
     when(ctx.queryParam("sortOrder")).thenReturn("desc");
-    userController.getUsersGroupedByCompany(ctx);
+    todoController.getTodosGroupedByCategory(ctx);
 
     // Capture the argument to `ctx.json()`
-    verify(ctx).json(userByCompanyListCaptor.capture());
+    verify(ctx).json(TodoByCategoryListCaptor.capture());
 
     // Get the value that was passed to `ctx.json()`
-    ArrayList<UserByCompany> result = userByCompanyListCaptor.getValue();
+    ArrayList<TodoByCategory> result = TodoByCategoryListCaptor.getValue();
 
     // There are 3 companies in the test data, so we should have 3 entries in the
     // result.
@@ -664,28 +665,28 @@ class TodoControllerSpec {
 
     // The companies should be in reverse alphabetical order by company name,
     // and with user counts of 1, 2, and 1, respectively.
-    UserByCompany umm = result.get(0);
+    TodoByCategory umm = result.get(0);
     assertEquals("UMM", umm._id);
-    assertEquals(1, umm.count);
-    UserByCompany ohmnet = result.get(1);
+    assertEquals(1, umm.body);
+    TodoByCategory ohmnet = result.get(1);
     assertEquals("OHMNET", ohmnet._id);
-    assertEquals(2, ohmnet.count);
-    UserByCompany ibm = result.get(2);
+    assertEquals(2, ohmnet.body);
+    TodoByCategory ibm = result.get(2);
     assertEquals("IBM", ibm._id);
-    assertEquals(1, ibm.count);
+    assertEquals(1, ibm.body);
   }
 
   @Test
-  void testGetUsersGroupedByCompanyOrderedByCount() {
+  void testGetTodosGroupedByCategoryOrderedByCount() {
     when(ctx.queryParam("sortBy")).thenReturn("count");
     when(ctx.queryParam("sortOrder")).thenReturn("asc");
-    userController.getUsersGroupedByCompany(ctx);
+    todoController.getTodosGroupedByCategory(ctx);
 
     // Capture the argument to `ctx.json()`
-    verify(ctx).json(userByCompanyListCaptor.capture());
+    verify(ctx).json(TodoByCategoryListCaptor.capture());
 
     // Get the value that was passed to `ctx.json()`
-    ArrayList<UserByCompany> result = userByCompanyListCaptor.getValue();
+    ArrayList<TodoByCategory> result = TodoByCategoryListCaptor.getValue();
 
     // There are 3 companies in the test data, so we should have 3 entries in the
     // result.
@@ -697,78 +698,78 @@ class TodoControllerSpec {
     // they
     // both have a count of 1. So we'll get them both and then swap them if
     // necessary.
-    UserByCompany ibm = result.get(0);
-    UserByCompany umm = result.get(1);
+    TodoByCategory ibm = result.get(0);
+    TodoByCategory umm = result.get(1);
     if (ibm._id.equals("UMM")) {
       umm = result.get(0);
       ibm = result.get(1);
     }
-    UserByCompany ohmnet = result.get(2);
+    TodoByCategory ohmnet = result.get(2);
     assertEquals("IBM", ibm._id);
-    assertEquals(1, ibm.count);
+    assertEquals(1, ibm.body);
     assertEquals("UMM", umm._id);
-    assertEquals(1, umm.count);
+    assertEquals(1, umm.body);
     assertEquals("OHMNET", ohmnet._id);
-    assertEquals(2, ohmnet.count);
+    assertEquals(2, ohmnet.body);
   }
 
-  @Test
-  void addUser() throws IOException {
-    // Create a new user to add
-    User newUser = new User();
-    newUser.name = "Test User";
-    newUser.age = 25;
-    newUser.company = "testers";
-    newUser.email = "test@example.com";
-    newUser.role = "viewer";
+  // @Test
+  // void addUser() throws IOException {
+  //   // Create a new user to add
+  //   User newUser = new User();
+  //   newUser.name = "Test User";
+  //   newUser.age = 25;
+  //   newUser.company = "testers";
+  //   newUser.email = "test@example.com";
+  //   newUser.role = "viewer";
 
-    // Use `javalinJackson` to convert the `User` object to a JSON string representing that user.
-    // This would be equivalent to:
-    //   String testNewUser = """
-    //       {
-    //         "name": "Test User",
-    //         "age": 25,
-    //         "company": "testers",
-    //         "email": "test@example.com",
-    //         "role": "viewer"
-    //       }
-    //       """;
-    // but using `javalinJackson` to generate the JSON avoids repeating all the field values,
-    // which is then less error prone.
-    String newUserJson = javalinJackson.toJsonString(newUser, User.class);
+  //   // Use `javalinJackson` to convert the `User` object to a JSON string representing that user.
+  //   // This would be equivalent to:
+  //   //   String testNewUser = """
+  //   //       {
+  //   //         "name": "Test User",
+  //   //         "age": 25,
+  //   //         "company": "testers",
+  //   //         "email": "test@example.com",
+  //   //         "role": "viewer"
+  //   //       }
+  //   //       """;
+  //   // but using `javalinJackson` to generate the JSON avoids repeating all the field values,
+  //   // which is then less error prone.
+  //   String newUserJson = javalinJackson.toJsonString(newUser, User.class);
 
-    // A `BodyValidator` needs
-    //   - The string (`newUserJson`) being validated
-    //   - The class (`User.class) it's trying to generate from that string
-    //   - A function (`() -> User`) which "shows" the validator how to convert
-    //     the JSON string to a `User` object. We'll again use `javalinJackson`,
-    //     but in the other direction.
-    when(ctx.bodyValidator(User.class))
-      .thenReturn(new BodyValidator<User>(newUserJson, User.class,
-                    () -> javalinJackson.fromJsonString(newUserJson, User.class)));
+  //   // A `BodyValidator` needs
+  //   //   - The string (`newUserJson`) being validated
+  //   //   - The class (`User.class) it's trying to generate from that string
+  //   //   - A function (`() -> User`) which "shows" the validator how to convert
+  //   //     the JSON string to a `User` object. We'll again use `javalinJackson`,
+  //   //     but in the other direction.
+  //   when(ctx.bodyValidator(User.class))
+  //     .thenReturn(new BodyValidator<User>(newUserJson, User.class,
+  //                   () -> javalinJackson.fromJsonString(newUserJson, User.class)));
 
-    userController.addNewUser(ctx);
-    verify(ctx).json(mapCaptor.capture());
+  //   userController.addNewUser(ctx);
+  //   verify(ctx).json(mapCaptor.capture());
 
-    // Our status should be 201, i.e., our new user was successfully created.
-    verify(ctx).status(HttpStatus.CREATED);
+  //   // Our status should be 201, i.e., our new user was successfully created.
+  //   verify(ctx).status(HttpStatus.CREATED);
 
-    // Verify that the user was added to the database with the correct ID
-    Document addedUser = db.getCollection("users")
-        .find(eq("_id", new ObjectId(mapCaptor.getValue().get("id")))).first();
+  //   // Verify that the user was added to the database with the correct ID
+  //   Document addedUser = db.getCollection("users")
+  //       .find(eq("_id", new ObjectId(mapCaptor.getValue().get("id")))).first();
 
-    // Successfully adding the user should return the newly generated, non-empty
-    // MongoDB ID for that user.
-    assertNotEquals("", addedUser.get("_id"));
-    // The new user in the database (`addedUser`) should have the same
-    // field values as the user we asked it to add (`newUser`).
-    assertEquals(newUser.name, addedUser.get("name"));
-    assertEquals(newUser.age, addedUser.get(UserController.AGE_KEY));
-    assertEquals(newUser.company, addedUser.get(UserController.COMPANY_KEY));
-    assertEquals(newUser.email, addedUser.get("email"));
-    assertEquals(newUser.role, addedUser.get(UserController.ROLE_KEY));
-    assertNotNull(addedUser.get("avatar"));
-  }
+  //   // Successfully adding the user should return the newly generated, non-empty
+  //   // MongoDB ID for that user.
+  //   assertNotEquals("", addedUser.get("_id"));
+  //   // The new user in the database (`addedUser`) should have the same
+  //   // field values as the user we asked it to add (`newUser`).
+  //   assertEquals(newUser.name, addedUser.get("name"));
+  //   assertEquals(newUser.age, addedUser.get(UserController.AGE_KEY));
+  //   assertEquals(newUser.company, addedUser.get(UserController.COMPANY_KEY));
+  //   assertEquals(newUser.email, addedUser.get("email"));
+  //   assertEquals(newUser.role, addedUser.get(UserController.ROLE_KEY));
+  //   assertNotNull(addedUser.get("avatar"));
+  // }
 
   @Test
   void addInvalidEmailUser() throws IOException {
@@ -1077,38 +1078,38 @@ class TodoControllerSpec {
   }
 
   @Test
-  void deleteFoundUser() throws IOException {
+  void deleteFoundTodo() throws IOException {
     String testID = samsId.toHexString();
     when(ctx.pathParam("id")).thenReturn(testID);
 
     // User exists before deletion
-    assertEquals(1, db.getCollection("users").countDocuments(eq("_id", new ObjectId(testID))));
+    assertEquals(1, db.getCollection("todos").countDocuments(eq("_id", new ObjectId(testID))));
 
-    userController.deleteUser(ctx);
+    todoController.deleteTodo(ctx);
 
     verify(ctx).status(HttpStatus.OK);
 
     // User is no longer in the database
-    assertEquals(0, db.getCollection("users").countDocuments(eq("_id", new ObjectId(testID))));
+    assertEquals(0, db.getCollection("todos").countDocuments(eq("_id", new ObjectId(testID))));
   }
 
   @Test
-  void tryToDeleteNotFoundUser() throws IOException {
+  void tryToDeleteNotFoundTodo() throws IOException {
     String testID = samsId.toHexString();
     when(ctx.pathParam("id")).thenReturn(testID);
 
-    userController.deleteUser(ctx);
+    todoController.deleteTodo(ctx);
     // User is no longer in the database
-    assertEquals(0, db.getCollection("users").countDocuments(eq("_id", new ObjectId(testID))));
+    assertEquals(0, db.getCollection("todos").countDocuments(eq("_id", new ObjectId(testID))));
 
     assertThrows(NotFoundResponse.class, () -> {
-      userController.deleteUser(ctx);
+      todoController.deleteTodo(ctx);
     });
 
     verify(ctx).status(HttpStatus.NOT_FOUND);
 
     // User is still not in the database
-    assertEquals(0, db.getCollection("users").countDocuments(eq("_id", new ObjectId(testID))));
+    assertEquals(0, db.getCollection("todos").countDocuments(eq("_id", new ObjectId(testID))));
   }
 
   /**
@@ -1175,4 +1176,4 @@ class TodoControllerSpec {
 }
 
 
-  void canGetUsersWithAge37Redux() throws JsonMappingException, JsonProcessingException {
+

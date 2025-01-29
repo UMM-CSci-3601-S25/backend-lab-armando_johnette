@@ -8,4 +8,5 @@ public class TodoByCategory {
   public String _id;
   public int body;
   public List<TodoIdBody> user;
+  public Object todos;
 }
