@@ -144,16 +144,16 @@ public class TodoController implements Controller {
     //     .get();
     //   filters.add(eq(STATUS_KEY, status));
     // }
-  ////////////   if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
-  //     Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(STATUS_KEY)), Pattern.CASE_INSENSITIVE);
-  //     filters.add(regex(STATUS_KEY, pattern));
-  //   }
+    if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
+      Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(STATUS_KEY)), Pattern.CASE_INSENSITIVE);
+      filters.add(regex(STATUS_KEY, pattern));
+    }
 
-  //   // Combine the list of filters into a single filtering document.
-  //   Bson combinedFilter = filters.isEmpty() ? new Document() : and(filters);
+    // Combine the list of filters into a single filtering document.
+    Bson combinedFilter = filters.isEmpty() ? new Document() : and(filters);
 
-  //   return combinedFilter;
-  // }
+    return combinedFilter;
+  }
 
   /**
    * Construct a Bson sorting document to use in the `sort` method based on the
