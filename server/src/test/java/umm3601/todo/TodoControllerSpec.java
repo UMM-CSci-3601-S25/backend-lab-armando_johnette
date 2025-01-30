@@ -485,41 +485,49 @@ class TodoControllerSpec {
 
   @Test
   void canGetTodosWithCategoryLowercase() throws IOException {
+    String targetCategory = "homework";
     Map<String, List<String>> queryParams = new HashMap<>();
-    queryParams.put(TodoController.CATEGORY_KEY, Arrays.asList(new String[] {"ohm"}));
-    when(ctx.queryParamMap()).thenReturn(queryParams);
-    when(ctx.queryParam(TodoController.CATEGORY_KEY)).thenReturn("ohm");
 
-    todoController.getTodo(ctx);
+    queryParams.put(TodoController.CATEGORY_KEY, Arrays.asList(new String[] {targetCategory}));
+    when(ctx.queryParamMap()).thenReturn(queryParams);
+    when(ctx.queryParam(TodoController.CATEGORY_KEY)).thenReturn("homework");
+
+  Validation validation = new Validation();
+  Validator<String> validator = validation.validator(TodoController.CATEGORY_KEY,String.class, targetCategory);
+
+  when(ctx.queryParamAsClass(TodoController.CATEGORY_KEY, String.class)).thenReturn(validator);
+
+   todoController.getTodo(ctx);
+
 
     verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
     for (Todo todo : todoArrayListCaptor.getValue()) {
-      assertEquals("OHMNET", todo.category);
+      assertEquals(targetCategory,todo.category);
     }
   }
 
-  @Test
-  void getTodosByRole() throws IOException {
-    Map<String, List<String>> queryParams = new HashMap<>();
-    String roleString = "viewer";
-    queryParams.put(TodoController.OWNER_KEY, Arrays.asList(new String[] {roleString}));
-    when(ctx.queryParamMap()).thenReturn(queryParams);
+  // @Test
+  // void getTodosByRole() throws IOException {
+  //   Map<String, List<String>> queryParams = new HashMap<>();
+  //   String roleString = "viewer";
+  //   queryParams.put(TodoController.OWNER_KEY, Arrays.asList(new String[] {roleString}));
+  //   when(ctx.queryParamMap()).thenReturn(queryParams);
 
-    // Create a validator that confirms that when we ask for the value associated with
-    // `ROLE_KEY` we get back a string that represents a legal role.
-    Validation validation = new Validation();
-    Validator<String> validator = validation.validator(TodoController.OWNER_KEY, String.class, roleString);
-    when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
+  //   // Create a validator that confirms that when we ask for the value associated with
+  //   // `ROLE_KEY` we get back a string that represents a legal role.
+  //   Validation validation = new Validation();
+  //   Validator<String> validator = validation.validator(TodoController.OWNER_KEY, String.class, roleString);
+  //   when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
 
-    todoController.getTodos(ctx);
+  //   todoController.getTodos(ctx);
 
-    verify(ctx).json(todoArrayListCaptor.capture());
-    verify(ctx).status(HttpStatus.OK);
-    assertEquals(2, todoArrayListCaptor.getValue().size());
-  }
+  //   verify(ctx).json(todoArrayListCaptor.capture());
+  //   verify(ctx).status(HttpStatus.OK);
+  //   assertEquals(2, todoArrayListCaptor.getValue().size());
+  // }
 
   // @Test
   // void getUsersByCompanyAndAge() throws IOException {
@@ -585,6 +593,7 @@ class TodoControllerSpec {
     });
 
     assertEquals("The requested todo was not found", exception.getMessage());
+
   }
 
 

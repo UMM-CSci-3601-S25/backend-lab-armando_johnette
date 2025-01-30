@@ -72,10 +72,10 @@ public class TodoController implements Controller {
     try {
       todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
     } catch (IllegalArgumentException e) {
-      throw new BadRequestResponse("The requested user id wasn't a legal Mongo Object ID.");
+      throw new BadRequestResponse("The requested todo wasn't a legal Mongo Object ID.");
     }
     if (todo == null) {
-      throw new NotFoundResponse("The requested user was not found");
+      throw new NotFoundResponse("The requested todo was not found");
     } else {
       ctx.json(todo);
       ctx.status(HttpStatus.OK);
@@ -138,11 +138,15 @@ public class TodoController implements Controller {
       Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(CATEGORY_KEY)), Pattern.CASE_INSENSITIVE);
       filters.add(regex(CATEGORY_KEY, pattern));
     }
+    // if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
+    //   String status = ctx.queryParamAsClass(STATUS_KEY, String.class)
+    //     .check(it -> it.matches(CATEGORY_REGEX), "User must have a legal user role")
+    //     .get();
+    //   filters.add(eq(STATUS_KEY, status));
+    // }
     if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
-      String status = ctx.queryParamAsClass(STATUS_KEY, String.class)
-        .check(it -> it.matches(CATEGORY_REGEX), "User must have a legal user role")
-        .get();
-      filters.add(eq(STATUS_KEY, status));
+      Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(STATUS_KEY)), Pattern.CASE_INSENSITIVE);
+      filters.add(regex(STATUS_KEY, pattern));
     }
 
     // Combine the list of filters into a single filtering document.
