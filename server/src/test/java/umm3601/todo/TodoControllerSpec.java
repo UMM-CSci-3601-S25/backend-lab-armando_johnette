@@ -1,25 +1,19 @@
 package umm3601.todo;
-import static com.mongodb.client.model.Filters.eq;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.mock;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -28,14 +22,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatcher;
+
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
@@ -43,20 +34,14 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
-import io.javalin.Javalin;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.NotFoundResponse;
-import io.javalin.json.JavalinJackson;
-import io.javalin.validation.BodyValidator;
 import io.javalin.validation.Validation;
-import io.javalin.validation.ValidationError;
-import io.javalin.validation.ValidationException;
 import io.javalin.validation.Validator;
 import umm3601.todos.Todo;
 import umm3601.todos.TodoController;
-import umm3601.todos.TodoByCategory;
 
 /**
  * Tests the logic of the UserController
@@ -87,9 +72,6 @@ class TodoControllerSpec {
   // for all the tests in this spec file.
   private static MongoClient mongoClient;
   private static MongoDatabase db;
-
-  // Used to translate between JSON and POJOs.
-  private static JavalinJackson javalinJackson = new JavalinJackson();
 
   @Mock
   private Context ctx;
@@ -155,7 +137,7 @@ class TodoControllerSpec {
                   .append("owner", "Dawn")
                   .append("category", "homework")
                   .append("status", "true")
-                  .append("body","do 3601 homework"));
+                  .append("body", "do 3601 homework"));
     samsId = new ObjectId();
     Document sam = new Document()
         .append("_id", samsId)
@@ -168,8 +150,6 @@ class TodoControllerSpec {
 
     todoController = new TodoController(db);
   }
-
-
 
   @Test
   void canGetAllTodos() throws IOException {
@@ -275,153 +255,6 @@ class TodoControllerSpec {
   // }
 
   /**
-   * Confirm that if we process a request for users with age 37,
-   * that all returned users have that age, and we get the correct
-   * number of users.
-   *
-   * Instead of using the Captor like in many other tests, in this test
-   * we use an ArgumentMatcher just to show how that can be used, illustrating
-   * another way to test the same thing.
-   *
-   * An `ArgumentMatcher` has a method `matches` that returns `true`
-   * if the argument passed to `ctx.json(…)` (a `List<User>` in this case)
-   * has the desired properties.
-   *
-   * This is probably overkill here, but it does illustrate a different
-   * approach to writing tests.
-   *
-   * @throws JsonMappingException
-   * @throws JsonProcessingException
-   */
-  // @Test
-  // void canGetUsersWithAge37Redux() throws JsonMappingException, JsonProcessingException {
-  //   // We'll need both `String` and `Integer` representations of
-  //   // the target age, so I'm defining both here.
-  //   Integer targetAge = 37;
-  //   String targetAgeString = targetAge.toString();
-
-  //   // When the controller calls `ctx.queryParamMap`, return the expected map for an
-  //   // "?age=37" query.
-  //   when(ctx.queryParamMap()).thenReturn(Map.of(UserController.AGE_KEY, List.of(targetAgeString)));
-  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-  //   // `targetAgeString`.
-  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(targetAgeString);
-
-  //   // Create a validator that confirms that when we ask for the value associated with
-  //   // `AGE_KEY` _as an integer_, we get back the integer value 37.
-  //   Validation validation = new Validation();
-  //   // The `AGE_KEY` should be name of the key whose value is being validated.
-  //   // You can actually put whatever you want here, because it's only used in the generation
-  //   // of testing error reports, but using the actually key value will make those reports more informative.
-  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, targetAgeString);
-  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
-
-  //   // Call the method under test.
-  //   userController.getUsers(ctx);
-
-  //   // Verify that `getUsers` included a call to `ctx.status(HttpStatus.OK)` at some
-  //   // point.
-  //   verify(ctx).status(HttpStatus.OK);
-
-  //   // Verify that `ctx.json()` is called with a `List` of `User`s.
-  //   // Each of those `User`s should have age 37.
-  //   verify(ctx).json(argThat(new ArgumentMatcher<List<User>>() {
-  //     @Override
-  //     public boolean matches(List<User> users) {
-  //       for (User user : users) {
-  //         assertEquals(targetAge, user.age);
-  //       }
-  //       assertEquals(2, users.size());
-  //       return true;
-  //     }
-  //   }));
-  // }
-
-  /**
-   * Test that if the user sends a request with an illegal value in
-   * the age field (i.e., something that can't be parsed to a number)
-   * we get a reasonable error back.
-   */
-  // @Test
-  // void respondsAppropriatelyToNonNumericAge() {
-  //   Map<String, List<String>> queryParams = new HashMap<>();
-  //   String illegalIntegerString = "bad integer string";
-  //   queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {illegalIntegerString}));
-  //   when(ctx.queryParamMap()).thenReturn(queryParams);
-  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-  //   // `illegalIntegerString`.
-  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(illegalIntegerString);
-
-  //   // Create a validator that confirms that when we ask for the value associated with
-  //   // `AGE_KEY` _as an integer_, we get back the `illegalIntegerString`.
-  //   Validation validation = new Validation();
-  //   // The `AGE_KEY` should be name of the key whose value is being validated.
-  //   // You can actually put whatever you want here, because it's only used in the generation
-  //   // of testing error reports, but using the actually key value will make those reports more informative.
-  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, illegalIntegerString);
-  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
-
-  //   // This should now throw a `ValidationException` because
-  //   // our request has an age that can't be parsed to a number.
-  //   ValidationException exception = assertThrows(ValidationException.class, () -> {
-  //     userController.getUsers(ctx);
-  //   });
-  //   // This digs into the returned `ValidationException` to get the underlying `Exception` that caused
-  //   // the validation to fail:
-  //   //   - `exception.getErrors` returns a `Map` that maps keys (like `AGE_KEY`) to lists of
-  //   //      validation errors for that key
-  //   //   - `.get(AGE_KEY)` returns a list of all the validation errors associated with `AGE_KEY`
-  //   //   - `.get(0)` assumes that the root cause is the first error in the list. In our case there
-  //   //     is only one root cause,
-  //   //     so that's safe, but you might be careful about that assumption in other contexts.
-  //   //   - `.exception()` gets the actually `Exception` value that was the underlying cause
-  //   Exception exceptionCause = exception.getErrors().get(UserController.AGE_KEY).get(0).exception();
-  //   // The cause should have been a `NumberFormatException` (what is thrown when we try to parse "bad" as an integer).
-  //   assertEquals(NumberFormatException.class, exceptionCause.getClass());
-  //   // The message for that `NumberFOrmatException` should include the text it tried to parse as an integer,
-  //   // i.e., `"bad integer string"`.
-  //   assertTrue(exceptionCause.getMessage().contains(illegalIntegerString));
-  // }
-
-  /**
-   * Test that if the user sends a request with an illegal value in
-   * the age field (i.e., too big of a number)
-   * we get a reasonable error code back.
-   */
-  // @Test
-  // void respondsAppropriatelyToTooLargeNumberAge() {
-  //   Map<String, List<String>> queryParams = new HashMap<>();
-  //   String overlyLargeAgeString = "151";
-  //   queryParams.put(UserController.AGE_KEY, Arrays.asList(new String[] {overlyLargeAgeString}));
-  //   when(ctx.queryParamMap()).thenReturn(queryParams);
-  //   // When the code being tested calls `ctx.queryParam(AGE_KEY)` return the
-  //   // `overlyLargeAgeString`.
-  //   when(ctx.queryParam(UserController.AGE_KEY)).thenReturn(overlyLargeAgeString);
-
-  //   // Create a validator that confirms that when we ask for the value associated with
-  //   // `AGE_KEY` _as an integer_, we get back the integer value 37.
-  //   Validation validation = new Validation();
-  //   // The `AGE_KEY` should be name of the key whose value is being validated.
-  //   // You can actually put whatever you want here, because it's only used in the generation
-  //   // of testing error reports, but using the actually key value will make those reports more informative.
-  //   Validator<Integer> validator = validation.validator(UserController.AGE_KEY, Integer.class, overlyLargeAgeString);
-  //   when(ctx.queryParamAsClass(UserController.AGE_KEY, Integer.class)).thenReturn(validator);
-
-  //   // This should now throw a `ValidationException` because
-  //   // our request has an age that is larger than 150, which isn't allowed.
-  //   ValidationException exception = assertThrows(ValidationException.class, () -> {
-  //     userController.getUsers(ctx);
-  //   });
-  //   // This `ValidationException` was caused by a custom check, so we just get the message from the first
-  //   // error and confirm that it contains the problematic string, since that would be useful information
-  //   // for someone trying to debug a case where this validation fails.
-  //   String exceptionMessage = exception.getErrors().get(UserController.AGE_KEY).get(0).getMessage();
-  //   // The message should be the message from our code under test, which should include the text we
-  //   // tried to parse as an age, namely "151".
-  //   assertTrue(exceptionMessage.contains(overlyLargeAgeString));
-  // }
-
-  /**
    * Test that if the user sends a request with an illegal value in
    * the age field (i.e., too small of a number)
    * we get a reasonable error code back.
@@ -488,20 +321,19 @@ class TodoControllerSpec {
     when(ctx.queryParamMap()).thenReturn(queryParams);
     when(ctx.queryParam(TodoController.OWNER_KEY)).thenReturn("Fry");
 
-  Validation validation = new Validation();
-  Validator<String> validator = validation.validator(TodoController.OWNER_KEY,String.class, targetOwner);
+    Validation validation = new Validation();
+    Validator<String> validator = validation.validator(TodoController.OWNER_KEY, String.class, targetOwner);
 
-  when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
+    when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
 
-   todoController.getTodos(ctx);
-
+    todoController.getTodos(ctx);
 
     verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
     for (Todo todo : todoArrayListCaptor.getValue()) {
-      assertEquals(targetOwner,todo.owner);
+      assertEquals(targetOwner, todo.owner);
     }
   }
 
@@ -514,20 +346,19 @@ class TodoControllerSpec {
     when(ctx.queryParamMap()).thenReturn(queryParams);
     when(ctx.queryParam(TodoController.BODY_CONTAINS_KEY)).thenReturn("do 3601 homework");
 
-  Validation validation = new Validation();
-  Validator<String> validator = validation.validator(TodoController.OWNER_KEY,String.class, targetOwner);
+    Validation validation = new Validation();
+    Validator<String> validator = validation.validator(TodoController.OWNER_KEY, String.class, targetOwner);
 
-  when(ctx.queryParamAsClass(TodoController.BODY_CONTAINS_KEY, String.class)).thenReturn(validator);
+    when(ctx.queryParamAsClass(TodoController.BODY_CONTAINS_KEY, String.class)).thenReturn(validator);
 
-   todoController.getTodos(ctx);
-
+    todoController.getTodos(ctx);
 
     verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
     for (Todo todo : todoArrayListCaptor.getValue()) {
-      assertEquals(targetOwner,todo.body);
+      assertEquals(targetOwner, todo.body);
     }
   }
 
@@ -540,20 +371,23 @@ class TodoControllerSpec {
     when(ctx.queryParamMap()).thenReturn(queryParams);
     when(ctx.queryParam(TodoController.STATUS_KEY)).thenReturn(String.valueOf(targetOwner));
 
-  Validation validation = new Validation();
-  Validator<String> validator = validation.validator(TodoController.STATUS_KEY,String.class, String.valueOf(targetOwner));
+    Validation validation = new Validation();
+    Validator<String> validator = validation.validator(
+      TodoController.STATUS_KEY,
+      String.class,
+      String.valueOf(targetOwner)
+    );
 
-  when(ctx.queryParamAsClass(TodoController.STATUS_KEY, String.class)).thenReturn(validator);
+    when(ctx.queryParamAsClass(TodoController.STATUS_KEY, String.class)).thenReturn(validator);
 
-   todoController.getTodos(ctx);
-
+    todoController.getTodos(ctx);
 
     verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
     for (Todo todo : todoArrayListCaptor.getValue()) {
-      assertEquals(targetOwner,todo.status);
+      assertEquals(targetOwner, todo.status);
     }
   }
 
@@ -566,20 +400,19 @@ class TodoControllerSpec {
     when(ctx.queryParamMap()).thenReturn(queryParams);
     when(ctx.queryParam(TodoController.CATEGORY_KEY)).thenReturn("homework");
 
-  Validation validation = new Validation();
-  Validator<String> validator = validation.validator(TodoController.CATEGORY_KEY,String.class, targetCategory);
+    Validation validation = new Validation();
+    Validator<String> validator = validation.validator(TodoController.CATEGORY_KEY, String.class, targetCategory);
 
-  when(ctx.queryParamAsClass(TodoController.CATEGORY_KEY, String.class)).thenReturn(validator);
+    when(ctx.queryParamAsClass(TodoController.CATEGORY_KEY, String.class)).thenReturn(validator);
 
-   todoController.getTodos(ctx);
-
+    todoController.getTodos(ctx);
 
     verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
     // Confirm that all the users passed to `json` work for OHMNET.
     for (Todo todo : todoArrayListCaptor.getValue()) {
-      assertEquals(targetCategory,todo.category);
+      assertEquals(targetCategory, todo.category);
     }
   }
 

@@ -6,7 +6,7 @@ import static com.mongodb.client.model.Filters.regex;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -40,7 +40,7 @@ public class TodoController implements Controller {
   public static final String OWNER_KEY = "owner";
   public static final String CATEGORY_KEY = "category";
   public static final String SORT_ORDER_KEY = "sortorder";
-  private static final String CATEGORY_REGEX = "^(video games|homework|groceries|software design)$";
+  //private static final String CATEGORY_REGEX = "^(video games|homework|groceries|software design)$";
   private final JacksonMongoCollection<Todo> todoCollection;
 
   /**
@@ -64,17 +64,17 @@ public class TodoController implements Controller {
    */
   public void getTodo(Context ctx) {
     String id = ctx.pathParam("id");
-    Todo Todo;
+    Todo todo;
 
     try {
-      Todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
+      todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
     } catch (IllegalArgumentException e) {
       throw new BadRequestResponse("The requested Todo id wasn't a legal Mongo Object ID.");
     }
-    if (Todo == null) {
+    if (todo == null) {
       throw new NotFoundResponse("The requested Todo was not found");
     } else {
-      ctx.json(Todo);
+      ctx.json(todo);
       ctx.status(HttpStatus.OK);
     }
   }
@@ -107,11 +107,12 @@ public class TodoController implements Controller {
       String statusParam = ctx.queryParam(STATUS_KEY);
       boolean targetStatus;
       if (statusParam.equalsIgnoreCase("complete") || statusParam.equalsIgnoreCase("true")) {
-      targetStatus = true;
+        targetStatus = true;
       } else if (statusParam.equalsIgnoreCase("incomplete") || statusParam.equalsIgnoreCase("false")) {
-      targetStatus = false;
+        targetStatus = false;
       } else {
-      throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'"); // throws an error if the status is not complete or incomplete
+        // throws an error if the status is not complete or incomplete
+        throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'");
       }
       filters.add(eq(STATUS_KEY, targetStatus));
     }
