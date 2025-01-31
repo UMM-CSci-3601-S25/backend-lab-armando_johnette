@@ -416,25 +416,29 @@ class TodoControllerSpec {
     }
   }
 
-  // @Test
-  // void getTodosByRole() throws IOException {
-  //   Map<String, List<String>> queryParams = new HashMap<>();
-  //   String roleString = "viewer";
-  //   queryParams.put(TodoController.OWNER_KEY, Arrays.asList(new String[] {roleString}));
-  //   when(ctx.queryParamMap()).thenReturn(queryParams);
+  @Test
+  void canGetTodosWithLimit() throws IOException {
+    Map<String, List<String>> queryParams = new HashMap<>();
+    Integer limit = 2;
+    String limitString = limit.toString();
 
-  //   // Create a validator that confirms that when we ask for the value associated with
-  //   // `ROLE_KEY` we get back a string that represents a legal role.
-  //   Validation validation = new Validation();
-  //   Validator<String> validator = validation.validator(TodoController.OWNER_KEY, String.class, roleString);
-  //   when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
+    queryParams.put(TodoController.LIMIT_KEY, Arrays.asList(new String[] {limitString}));
+    when(ctx.queryParamMap()).thenReturn(queryParams);
 
-  //   todoController.getTodos(ctx);
+    // Create a validator that confirms that when we ask for the value associated with
+    // `LIMIT_KEY` _as an integer_, we get back the integer value 2.
+    Validation validation = new Validation();
+    Validator<Integer> validator = validation.validator(TodoController.LIMIT_KEY, Integer.class, limitString);
+    when(ctx.queryParamAsClass(TodoController.LIMIT_KEY, Integer.class)).thenReturn(validator);
+    when(ctx.queryParam(TodoController.LIMIT_KEY)).thenReturn(limitString);
 
-  //   verify(ctx).json(todoArrayListCaptor.capture());
-  //   verify(ctx).status(HttpStatus.OK);
-  //   assertEquals(2, todoArrayListCaptor.getValue().size());
-  // }
+    todoController.getTodos(ctx);
+    verify(ctx).json(todoArrayListCaptor.capture());
+    verify(ctx).status(HttpStatus.OK);
+
+    // Confirm that there are only 2 values returned since we limited to 2.
+    assertEquals(2, todoArrayListCaptor.getValue().size());
+  }
 
   // @Test
   // void getUsersByCompanyAndAge() throws IOException {

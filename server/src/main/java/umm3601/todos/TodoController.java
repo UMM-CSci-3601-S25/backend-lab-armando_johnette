@@ -34,7 +34,7 @@ public class TodoController implements Controller {
   private static final String API_TODOS = "/api/todos";
   private static final String API_TODO_BY_ID = "/api/todos/{id}";
 
-  static final String LIMIT_KEY = "limit";
+  public static final String LIMIT_KEY = "limit";
   public static final String STATUS_KEY = "status";
   public static final String BODY_CONTAINS_KEY = "body";
   public static final String OWNER_KEY = "owner";
