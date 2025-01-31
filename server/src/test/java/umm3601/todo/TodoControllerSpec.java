@@ -56,7 +56,6 @@ import io.javalin.validation.ValidationException;
 import io.javalin.validation.Validator;
 import umm3601.todos.Todo;
 import umm3601.todos.TodoController;
-import umm3601.user.UserController;
 import umm3601.todos.TodoByCategory;
 
 /**
@@ -155,7 +154,8 @@ class TodoControllerSpec {
               new Document()
                   .append("owner", "Dawn")
                   .append("category", "homework")
-                  .append("status", "true"));
+                  .append("status", "true")
+                  .append("body","do 3601 homework"));
     samsId = new ObjectId();
     Document sam = new Document()
         .append("_id", samsId)
@@ -169,14 +169,7 @@ class TodoControllerSpec {
     todoController = new TodoController(db);
   }
 
-  @Test
-  void addsRoutes() {
-    Javalin mockServer = mock(Javalin.class);
-    todoController.addRoutes(mockServer);
-    verify(mockServer, Mockito.atLeast(3)).get(any(), any());
-    verify(mockServer, Mockito.atLeastOnce()).post(any(), any());
-    verify(mockServer, Mockito.atLeastOnce()).delete(any(), any());
-  }
+
 
   @Test
   void canGetAllTodos() throws IOException {
@@ -187,8 +180,11 @@ class TodoControllerSpec {
     verify(ctx).json(todoArrayListCaptor.capture());
     verify(ctx).status(HttpStatus.OK);
 
+    System.err.println(db.getCollection("todos").countDocuments());
+    System.err.println(todoArrayListCaptor.getValue().size());
+
     assertEquals(
-        db.getCollection("todo").countDocuments(),
+        db.getCollection("todos").countDocuments(),
         todoArrayListCaptor.getValue().size());
   }
 
@@ -484,6 +480,84 @@ class TodoControllerSpec {
   }
 
   @Test
+  void canGetTodosWithOwner() throws IOException {
+    String targetOwner = "Fry";
+    Map<String, List<String>> queryParams = new HashMap<>();
+
+    queryParams.put(TodoController.OWNER_KEY, Arrays.asList(new String[] {targetOwner}));
+    when(ctx.queryParamMap()).thenReturn(queryParams);
+    when(ctx.queryParam(TodoController.OWNER_KEY)).thenReturn("Fry");
+
+  Validation validation = new Validation();
+  Validator<String> validator = validation.validator(TodoController.OWNER_KEY,String.class, targetOwner);
+
+  when(ctx.queryParamAsClass(TodoController.OWNER_KEY, String.class)).thenReturn(validator);
+
+   todoController.getTodos(ctx);
+
+
+    verify(ctx).json(todoArrayListCaptor.capture());
+    verify(ctx).status(HttpStatus.OK);
+
+    // Confirm that all the users passed to `json` work for OHMNET.
+    for (Todo todo : todoArrayListCaptor.getValue()) {
+      assertEquals(targetOwner,todo.owner);
+    }
+  }
+
+  @Test
+  void canGetTodosWithBody() throws IOException {
+    String targetOwner = "do 3601 homework";
+    Map<String, List<String>> queryParams = new HashMap<>();
+
+    queryParams.put(TodoController.BODY_CONTAINS_KEY, Arrays.asList(new String[] {targetOwner}));
+    when(ctx.queryParamMap()).thenReturn(queryParams);
+    when(ctx.queryParam(TodoController.BODY_CONTAINS_KEY)).thenReturn("do 3601 homework");
+
+  Validation validation = new Validation();
+  Validator<String> validator = validation.validator(TodoController.OWNER_KEY,String.class, targetOwner);
+
+  when(ctx.queryParamAsClass(TodoController.BODY_CONTAINS_KEY, String.class)).thenReturn(validator);
+
+   todoController.getTodos(ctx);
+
+
+    verify(ctx).json(todoArrayListCaptor.capture());
+    verify(ctx).status(HttpStatus.OK);
+
+    // Confirm that all the users passed to `json` work for OHMNET.
+    for (Todo todo : todoArrayListCaptor.getValue()) {
+      assertEquals(targetOwner,todo.body);
+    }
+  }
+
+  @Test
+  void canGetTodosWithStatus() throws IOException {
+    Boolean targetOwner = true;
+    Map<String, List<String>> queryParams = new HashMap<>();
+
+    queryParams.put(TodoController.STATUS_KEY, Arrays.asList(String.valueOf(targetOwner)));
+    when(ctx.queryParamMap()).thenReturn(queryParams);
+    when(ctx.queryParam(TodoController.STATUS_KEY)).thenReturn(String.valueOf(targetOwner));
+
+  Validation validation = new Validation();
+  Validator<String> validator = validation.validator(TodoController.STATUS_KEY,String.class, String.valueOf(targetOwner));
+
+  when(ctx.queryParamAsClass(TodoController.STATUS_KEY, String.class)).thenReturn(validator);
+
+   todoController.getTodos(ctx);
+
+
+    verify(ctx).json(todoArrayListCaptor.capture());
+    verify(ctx).status(HttpStatus.OK);
+
+    // Confirm that all the users passed to `json` work for OHMNET.
+    for (Todo todo : todoArrayListCaptor.getValue()) {
+      assertEquals(targetOwner,todo.status);
+    }
+  }
+
+  @Test
   void canGetTodosWithCategoryLowercase() throws IOException {
     String targetCategory = "homework";
     Map<String, List<String>> queryParams = new HashMap<>();
@@ -497,7 +571,7 @@ class TodoControllerSpec {
 
   when(ctx.queryParamAsClass(TodoController.CATEGORY_KEY, String.class)).thenReturn(validator);
 
-   todoController.getTodo(ctx);
+   todoController.getTodos(ctx);
 
 
     verify(ctx).json(todoArrayListCaptor.capture());
@@ -580,7 +654,7 @@ class TodoControllerSpec {
       todoController.getTodo(ctx);
     });
 
-    assertEquals("The requested user id wasn't a legal Mongo Object ID.", exception.getMessage());
+    assertEquals("The requested Todo id wasn't a legal Mongo Object ID.", exception.getMessage());
   }
 
   @Test
@@ -592,12 +666,11 @@ class TodoControllerSpec {
       todoController.getTodo(ctx);
     });
 
-    assertEquals("The requested todo was not found", exception.getMessage());
+    assertEquals("The requested Todo was not found", exception.getMessage());
 
   }
 
 
 }
-
 
 

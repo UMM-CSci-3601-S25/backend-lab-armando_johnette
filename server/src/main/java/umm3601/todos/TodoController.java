@@ -1,12 +1,9 @@
 package umm3601.todos;
+
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.regex;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream.Filter;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +18,6 @@ import org.mongojack.JacksonMongoCollection;
 
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.client.result.DeleteResult;
 
 import io.javalin.Javalin;
 import io.javalin.http.BadRequestResponse;
@@ -29,30 +25,32 @@ import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.NotFoundResponse;
 import umm3601.Controller;
-//import umm3601.todos.TodoByCategory;;
 
+/**
+ * Controller that manages requests for info about Todos.
+ */
 public class TodoController implements Controller {
 
   private static final String API_TODOS = "/api/todos";
   private static final String API_TODO_BY_ID = "/api/todos/{id}";
-  // creating the api request for filtering todos by status
-  //private static final String API_TODO_BY_STATUS = "/api/todos?status=complete";
-  static final String BODY_KEY = "body";
-  public static final String CATEGORY_KEY = "category";
-  static final String STATUS_KEY = "status";
-  public static final String SORT_ORDER_KEY = "sortorder";
+
+  static final String LIMIT_KEY = "limit";
+  public static final String STATUS_KEY = "status";
+  public static final String BODY_CONTAINS_KEY = "body";
   public static final String OWNER_KEY = "owner";
-  //private static final int REASONABLE_AGE_LIMIT = 150;
-  private static final String CATEGORY_REGEX = "^(homework|video games|groceries|software design)$";
-  private static final String STATUS_REGEX = "^(complete|incomplete)$";
-  public static String COMPANY_KEY;
+  public static final String CATEGORY_KEY = "category";
+  public static final String SORT_ORDER_KEY = "sortorder";
+
+
+
+  private static final String CATEGORY_REGEX = "^(video games|homework|groceries|software design)$";
 
   private final JacksonMongoCollection<Todo> todoCollection;
 
   /**
-   * Construct a controller for users.
+   * Construct a controller for Todos.
    *
-   * @param database the database containing user data
+   * @param database the database containing Todo data
    */
   public TodoController(MongoDatabase database) {
     todoCollection = JacksonMongoCollection.builder().build(
@@ -63,33 +61,30 @@ public class TodoController implements Controller {
   }
 
   /**
-   * Set the JSON body of the response to be the single user
+   * Set the JSON body of the response to be the single Todo
    * specified by the `id` parameter in the request
    *
    * @param ctx a Javalin HTTP context
-   *
    */
-  //Todo#1 implement an api that gets all the todos
   public void getTodo(Context ctx) {
     String id = ctx.pathParam("id");
-    Todo todo;
+    Todo Todo;
 
     try {
-      todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
+      Todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
     } catch (IllegalArgumentException e) {
-      throw new BadRequestResponse("The requested todo wasn't a legal Mongo Object ID.");
+      throw new BadRequestResponse("The requested Todo id wasn't a legal Mongo Object ID.");
     }
-    if (todo == null) {
-      throw new NotFoundResponse("The requested todo was not found");
+    if (Todo == null) {
+      throw new NotFoundResponse("The requested Todo was not found");
     } else {
-      ctx.json(todo);
+      ctx.json(Todo);
       ctx.status(HttpStatus.OK);
     }
   }
 
-
   /**
-   * Set the JSON body of the response to be a list of all the users returned from the database
+   * Set the JSON body of the response to be a list of all the Todos returned from the database
    * that match any requested filters and ordering
    *
    * @param ctx a Javalin HTTP context
@@ -98,78 +93,75 @@ public class TodoController implements Controller {
     Bson combinedFilter = constructFilter(ctx);
     Bson sortingOrder = constructSortingOrder(ctx);
 
-    // All three of the find, sort, and into steps happen "in parallel" inside the
-    // database system. So MongoDB is going to find the users with the specified
-    // properties, return those sorted in the specified manner, and put the
-    // results into an initially empty ArrayList.
     ArrayList<Todo> matchingTodos = todoCollection
       .find(combinedFilter)
       .sort(sortingOrder)
-      .limit(0)
+      .limit(limit(ctx))
       .into(new ArrayList<>());
 
-    // Set the JSON body of the response to be the list of users returned by the database.
-    // According to the Javalin documentation (https://javalin.io/documentation#context),
-    // this calls result(jsonString), and also sets content type to json
+
     ctx.json(matchingTodos);
 
     // Explicitly set the context status to OK
     ctx.status(HttpStatus.OK);
   }
 
-  /**
-   * Construct a Bson filter document to use in the `find` method based on the
-   * query parameters from the context.
-   *
-   * This checks for the presence of the `age`, `company`, and `role` query
-   * parameters and constructs a filter document that will match users with
-   * the specified values for those fields.
-   *
-   * @param ctx a Javalin HTTP context, which contains the query parameters
-   *    used to construct the filter
-   * @return a Bson filter document that can be used in the `find` method
-   *   to filter the database collection of users
-   */
-  private int getLimit(Context ctx){
-    String limitStr = ctx.queryParam("limit");
-    int limit = 0;
-    if(limitStr != null)
-    try {
 
-    }
-  }
+
 
   private Bson constructFilter(Context ctx) {
-    List<Bson> filters = new ArrayList<>(); // start with an empty list of filters
-    // FILTERING by CATEGORY: CASE_INSENSITIVE; WE NEED TO EDIT THIS TO BE ABLE TO TO VALIDATE THE CATEGORY
-    if (ctx.queryParamMap().containsKey(CATEGORY_KEY)) {
-      Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(CATEGORY_KEY)), Pattern.CASE_INSENSITIVE);
-      filters.add(regex (CATEGORY_KEY, pattern));
+    List<Bson> filters = new ArrayList<>();
 
-      //List<String> categories = ctx.queryParamMap().get(CATEGORY_KEY);
-      //filters = Filter.in(CATEGORY_KEY, categories);
-      //int targetAge = ctx.queryParamAsClass(BODY_KEY, Integer.class)
-        //.check(it -> it > 0, "User's age must be greater than zero; you provided " + ctx.queryParam(BODY_KEY))
-        //.check(it -> it < REASONABLE_AGE_LIMIT,
-        //  "User's age must be less than " + REASONABLE_AGE_LIMIT + "; you provided " + ctx.queryParam(BODY_KEY))
-        //.get();
-      //filters.add(eq(BODY_KEY, targetAge));
-    }
-    // FILTERING BY THE STATUS: CASE_INSENSITIVE; WE NEED TO EDIT THE FILTERING FOR STATUS TO CONVERT TO LANGUAGE IN MBD
+
+
+
+
+
+//****
     if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
-      Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(STATUS_KEY)), Pattern.CASE_INSENSITIVE);
-      filters.add(regex(STATUS_KEY, pattern));
+      String statusParam = ctx.queryParam(STATUS_KEY);
+      boolean targetStatus;
+      if (statusParam.equalsIgnoreCase("complete") || statusParam.equalsIgnoreCase("true")) {
+      targetStatus = true;
+      } else if (statusParam.equalsIgnoreCase("incomplete") || statusParam.equalsIgnoreCase("false")) {
+      targetStatus = false;
+      } else {
+      throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'"); // throws an error if the status is not complete or incomplete
+      }
+      filters.add(eq(STATUS_KEY, targetStatus));
     }
-    // if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
-    //   String status = ctx.queryParamAsClass(STATUS_KEY, String.class)
-    //     .check(it -> it.matches(CATEGORY_REGEX), "User must have a legal user role")
-    //     .get();
-    //   filters.add(eq(STATUS_KEY, status));
-    // }
-   //if (ctx.queryParamMap().containsKey(OWNER_KEY)) {
-    //   Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(STATUS_KEY)), Pattern.CASE_INSENSITIVE);
-    //   filters.add(regex(STATUS_KEY, pattern));
-    // }
+
+
+
+
+
+    if (ctx.queryParamMap().containsKey(BODY_CONTAINS_KEY)) {
+      String targetContent = ctx.queryParam(BODY_CONTAINS_KEY);
+      Pattern pattern = Pattern.compile(targetContent, Pattern.CASE_INSENSITIVE);
+      filters.add(regex("body", pattern));
+    }
+
+
+    if (ctx.queryParamMap().containsKey(OWNER_KEY)) {
+      String targetOwner = ctx.queryParam(OWNER_KEY);
+      filters.add(regex("owner", Pattern.compile(targetOwner, Pattern.CASE_INSENSITIVE)));
+    }
+
+
+
+
+
+
+    if (ctx.queryParamMap().containsKey(CATEGORY_KEY)) {
+      // String category = ctx.queryParamAsClass(CATEGORY_KEY, String.class)
+      //   .check(it -> it.matches(CATEGORY_REGEX), "Todo must have a legal Todo category")
+      //   .get();
+      // filters.add(eq(CATEGORY_KEY, category));
+      Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(CATEGORY_KEY)), Pattern.CASE_INSENSITIVE);
+      filters.add(regex(CATEGORY_KEY, pattern));
+    }
+
+
 
     // Combine the list of filters into a single filtering document.
     Bson combinedFilter = filters.isEmpty() ? new Document() : and(filters);
@@ -177,256 +169,51 @@ public class TodoController implements Controller {
     return combinedFilter;
   }
 
-  /**
-   * Construct a Bson sorting document to use in the `sort` method based on the
-   * query parameters from the context.
-   *
-   * This checks for the presence of the `sortby` and `sortorder` query
-   * parameters and constructs a sorting document that will sort users by
-   * the specified field in the specified order. If the `sortby` query
-   * parameter is not present, it defaults to "name". If the `sortorder`
-   * query parameter is not present, it defaults to "asc".
-   *
-   * @param ctx a Javalin HTTP context, which contains the query parameters
-   *   used to construct the sorting order
-   * @return a Bson sorting document that can be used in the `sort` method
-   *  to sort the database collection of users
-   */
+
+  //****** */
   private Bson constructSortingOrder(Context ctx) {
-    // Sort the results. Use the `sortby` query param (default "name")
-    // as the field to sort by, and the query param `sortorder` (default
-    // "asc") to specify the sort order.
-    String sortBy = Objects.requireNonNullElse(ctx.queryParam("sortby"), "category");
+
+    String sortBy = Objects.requireNonNullElse(ctx.queryParam("orderBy"), "owner");
     String sortOrder = Objects.requireNonNullElse(ctx.queryParam("sortorder"), "asc");
-    Bson sortingOrder = sortOrder.equals("desc") ?  Sorts.descending(sortBy) : Sorts.ascending(sortBy);
+    Bson sortingOrder = sortOrder.equals("desc") ? Sorts.descending(sortBy) : Sorts.ascending(sortBy);
     return sortingOrder;
   }
 
-  /**
-   * Set the JSON body of the response to be a list of all the user names and IDs
-   * returned from the database, grouped by company
-   *
-   * This "returns" a list of user names and IDs, grouped by company in the JSON
-   * body of the response. The user names and IDs are stored in `UserIdROLE_KEYName` objects,
-   * and the company name, the number of users in that company, and the list of user
-   * names and IDs are stored in `UserByCompany` objects.
-   *
-   * @param ctx a Javalin HTTP context that provides the query parameters
-   *   used to sort the results. We support either sorting by company name
-   *   (in either `asc` or `desc` order) or by the number of users in the
-   *   company (`count`, also in either `asc` or `desc` order).
-   */
-  // public void getTodosGroupedByCategory(Context ctx) {
-  //   // We'll support sorting the results either by company name (in either `asc` or `desc` order)
-  //   // or by the number of users in the company (`count`, also in either `asc` or `desc` order).
-  //   String sortBy = Objects.requireNonNullElse(ctx.queryParam("sortBy"), "_id");
-  //   if (sortBy.equals("category")) {
-  //     sortBy = "_id";
-  //   }
-  //   String sortOrder = Objects.requireNonNullElse(ctx.queryParam("sortOrder"), "asc");
-  //   Bson sortingOrder = sortOrder.equals("desc") ?  Sorts.descending(sortBy) : Sorts.ascending(sortBy);
 
-    // The `UserByCompany` class is a simple class that has fields for the company
-    // name, the number of users in that company, and a list of user names and IDs
-    // (using the `UserIdName` class to store the user names and IDs).
-    // We're going to use the aggregation pipeline to group users by company, and
-    // then count the number of users in each company. We'll also collect the user
-    // names and IDs for each user in each company. We'll then convert the results
-    // of the aggregation pipeline to `UserByCompany` objects.
 
-  //   ArrayList<TodoByCategory> matchingTodos = todoCollection
-  //     // The following aggregation pipeline groups users by company, and
-  //     // then counts the number of users in each company. It also collects
-  //     // the user names and IDs for each user in each company.
-  //     .aggregate(
-  //       List.of(
-  //         // Project the fields we want to use in the next step, i.e., the _id, name, and company fields
-  //         new Document("$project", new Document("_id", 1).append("status", 1).append("category", 1)),
-  //         // Group the users by company, and count the number of users in each company
-  //         new Document("$group", new Document("_id", "$category")
-  //           // Count the number of users in each company
-  //           .append("count", new Document("$sum", 1))
-  //           // Collect the user names and IDs for each user in each company
-  //           .append("users", new Document("$push", new Document("_id", "$_id").append("status", "$name")))),
-  //         // Sort the results. Use the `sortby` query param (default "company")
-  //         // as the field to sort by, and the query param `sortorder` (default
-  //         // "asc") to specify the sort order.
-  //         new Document("$sort", sortingOrder)
-  //       ),
-  //       // Convert the results of the aggregation pipeline to UserGroupResult objects
-  //       // (i.e., a list of UserGroupResult objects). It is necessary to have a Java type
-  //       // to convert the results to, and the JacksonMongoCollection will do this for us.
-  //       TodoByCategory.class
-  //     )
-  //     .into(new ArrayList<>());
+///**************
+  private int limit(Context ctx) {
+    int targetLimit = (int) todoCollection.countDocuments();
+    if (ctx.queryParamMap().containsKey(LIMIT_KEY)) {
+      while (true) {
+        targetLimit = ctx.queryParamAsClass(LIMIT_KEY, Integer.class)
+          .check(it -> it > 0, "Todo limit must be greater than 0, you gave " + ctx.queryParam(LIMIT_KEY))
+          .get();
+        if (targetLimit > 0) {
+          break;
+        }
+      }
+    }
+    return targetLimit;
+  }
 
-  //   ctx.json(matchingTodos);
-  //   ctx.status(HttpStatus.OK);
-  // }
+
+
+
+
 
   /**
-   * Add a new user using information from the context
-   * (as long as the information gives "legal" values to User fields)
-   *
-   * @param ctx a Javalin HTTP context that provides the user info
-   *  in the JSON body of the request
-   */
-  // public void addNewTodo(Context ctx) {
-  //   /*
-  //    * The follow chain of statements uses the Javalin validator system
-  //    * to verify that instance of `User` provided in this context is
-  //    * a "legal" user. It checks the following things (in order):
-  //    *    - The user has a value for the name (`usr.name != null`)
-  //    *    - The user name is not blank (`usr.name.length > 0`)
-  //    *    - The provided email is valid (matches EMAIL_REGEX)
-  //    *    - The provided age is > 0
-  //    *    - The provided age is < REASONABLE_AGE_LIMIT
-  //    *    - The provided role is valid (one of "admin", "editor", or "viewer")
-  //    *    - A non-blank company is provided
-  //    * If any of these checks fail, the Javalin system will throw a
-  //    * `BadRequestResponse` with an appropriate error message.
-  //    *///////////
-  //   String body = ctx.body();
-  //   Todo newTodo = ctx.bodyValidator(Todo.class)
-  //     .check(todo -> todo.body != null && todo.body.length() > 0,
-  //       "Todo must be a valid todo and is non-empty ; body was " + body)
-  //     .check(todo -> todo.status.matches(STATUS_REGEX),
-  //     //   "User must have an assigned owner; body was " + body)
-  //     // .check(todo -> todo.owner > 0,
-  //     //   //"User's age must be greater than zero; body was " + body)
-  //     // //.check(usr -> usr.age < REASONABLE_AGE_LIMIT,
-  //     //   "User's age must be less than " + REASONABLE_AGE_LIMIT + "; body was " + body)
-  //     //.check(usr -> usr.status.matches(ROLE_REGEX),
-  //      // "User must have a legal user role; body was " + body)
-  //     .check(usr -> usr.category != null && usr.category.length() > 0,
-  //       "User must have a non-empty company name; body was " + body)
-  //     .get();
-
-  //   // Generate a user avatar (you won't need this part for todos)
-  //   //newUser.avatar = generateAvatar(newUser.email);
-
-  //   // Add the new user to the database
-  //   todoCollection.insertOne(newTodo);
-
-  //   // Set the JSON response to be the `_id` of the newly created user.
-  //   // This gives the client the opportunity to know the ID of the new user,
-  //   // which it can then use to perform further operations (e.g., a GET request
-  //   // to get and display the details of the new user).
-  //   ctx.json(Map.of("id", newTodo._id));
-  //   // 201 (`HttpStatus.CREATED`) is the HTTP code for when we successfully
-  //   // create a new resource (a user in this case).
-  //   // See, e.g., https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
-  //   // for a description of the various response codes.
-  //   ctx.status(HttpStatus.CREATED);
-  // }
-
-  /**
-   * Delete the user specified by the `id` parameter in the request.
+   * Get a JSON response with a list of all the Todos.
    *
    * @param ctx a Javalin HTTP context
    */
-  // public void deleteTodo(Context ctx) {
-  //   String id = ctx.pathParam("id");
-  //   DeleteResult deleteResult = todoCollection.deleteOne(eq("_id", new ObjectId(id)));
-  //   // We should have deleted 1 or 0 users, depending on whether `id` is a valid user ID.
-  //   if (deleteResult.getDeletedCount() != 1) {
-  //     ctx.status(HttpStatus.NOT_FOUND);
-  //     throw new NotFoundResponse(
-  //       "Was unable to delete ID "
-  //         + id
-  //         + "; perhaps illegal ID or an ID for an item not in the system?");
-  //   }
-  //   ctx.status(HttpStatus.OK);
-  // }
 
-  /**
-   * Utility function to generate an URI that points
-   * at a unique avatar image based on a user's email.
-   *
-   * This uses the service provided by gravatar.com; there
-   * are numerous other similar services that one could
-   * use if one wished.
-   *
-   * YOU DON'T NEED TO USE THIS FUNCTION FOR THE TODOS.
-   *
-   */
-  //String generateAvatar(String email) {
-   // String avatar;
-    //try {
-      // generate unique md5 code for identicon
-     // avatar = "https://gravatar.com/avatar/" + md5(email) + "?d=identicon";
-    //} catch (NoSuchAlgorithmException ignored) {
-      // set to mystery person
-     // avatar = "https://gravatar.com/avatar/?d=mp";
-   // }
-   // return avatar;
-  //}
-
-  /**
-   * Utility function to generate the md5 hash for a given string
-   *
-   * @param str the string to generate a md5 for
-   */
-  public String md5(String str) throws NoSuchAlgorithmException {
-    MessageDigest md = MessageDigest.getInstance("MD5");
-    byte[] hashInBytes = md.digest(str.toLowerCase().getBytes(StandardCharsets.UTF_8));
-
-    StringBuilder result = new StringBuilder();
-    for (byte b : hashInBytes) {
-      result.append(String.format("%02x", b));
-    }
-    return result.toString();
-  }
-
-  @Override
   public void addRoutes(Javalin server) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'addRoutes'");
+    // Get the specified Todo
+    server.get(API_TODO_BY_ID, this::getTodo);
+
+    // List Todos, filtered using query parameters
+    server.get(API_TODOS, this::getTodos);
+
   }
-
-  /**
-   * Setup routes for the `user` collection endpoints.
-   *
-   * These endpoints are:
-   *   - `GET /api/users/:id`
-   *       - Get the specified user
-   *   - `GET /api/users?age=NUMBER&company=STRING&name=STRING`
-   *      - List users, filtered using query parameters
-   *      - `age`, `company`, and `name` are optional query parameters
-   *   - `GET /api/usersByCompany`
-   *     - Get user names and IDs, possibly filtered, grouped by company
-   *   - `DELETE /api/users/:id`
-   *      - Delete the specified user
-   *   - `POST /api/users`
-   *      - Create a new user
-   *      - The user info is in the JSON body of the HTTP request
-   *
-   * GROUPS SHOULD CREATE THEIR OWN CONTROLLERS THAT IMPLEMENT THE
-   * `Controller` INTERFACE FOR WHATEVER DATA THEY'RE WORKING WITH.
-   * You'll then implement the `addRoutes` method for that controller,
-   * which will set up the routes for that data. The `Server#setupRoutes`
-   * method will then call `addRoutes` for each controller, which will
-   * add the routes for that controller's data.
-   *
-   * @param server The Javalin server instance
-   * @param userController The controller that handles the user endpoints
-   */
-//   public void addRoutes(Javalin server) {
-//     // Get the specified user
-//     server.get(API_TODO_BY_ID, this::getTodo);
-
-//     // List users, filtered using query parameters
-//     server.get(API_TODOS, this::getTodos);
-
-//     // Get the users, possibly filtered, grouped by company
-//     server.get("/api/TodoByCategory", this::getTodosGroupedByCategory);
-
-//     // Add new user with the user info being in the JSON body
-//     // of the HTTP request
-//     server.post(API_TODOS, this::addNewTodo);
-
-//     // Delete the specified user
-//     server.delete(API_TODO_BY_ID, this::deleteTodo);
-//   }
 }
-
