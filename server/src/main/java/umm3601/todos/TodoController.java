@@ -40,11 +40,7 @@ public class TodoController implements Controller {
   public static final String OWNER_KEY = "owner";
   public static final String CATEGORY_KEY = "category";
   public static final String SORT_ORDER_KEY = "sortorder";
-
-
-
   private static final String CATEGORY_REGEX = "^(video games|homework|groceries|software design)$";
-
   private final JacksonMongoCollection<Todo> todoCollection;
 
   /**
@@ -102,22 +98,11 @@ public class TodoController implements Controller {
 
     ctx.json(matchingTodos);
 
-    // Explicitly set the context status to OK
     ctx.status(HttpStatus.OK);
   }
 
-
-
-
   private Bson constructFilter(Context ctx) {
     List<Bson> filters = new ArrayList<>();
-
-
-
-
-
-
-//****
     if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
       String statusParam = ctx.queryParam(STATUS_KEY);
       boolean targetStatus;
@@ -130,47 +115,33 @@ public class TodoController implements Controller {
       }
       filters.add(eq(STATUS_KEY, targetStatus));
     }
-
-
-
-
-
     if (ctx.queryParamMap().containsKey(BODY_CONTAINS_KEY)) {
       String targetContent = ctx.queryParam(BODY_CONTAINS_KEY);
       Pattern pattern = Pattern.compile(targetContent, Pattern.CASE_INSENSITIVE);
       filters.add(regex("body", pattern));
     }
 
-
     if (ctx.queryParamMap().containsKey(OWNER_KEY)) {
       String targetOwner = ctx.queryParam(OWNER_KEY);
       filters.add(regex("owner", Pattern.compile(targetOwner, Pattern.CASE_INSENSITIVE)));
     }
-
-
-
-
-
-
     if (ctx.queryParamMap().containsKey(CATEGORY_KEY)) {
-      // String category = ctx.queryParamAsClass(CATEGORY_KEY, String.class)
-      //   .check(it -> it.matches(CATEGORY_REGEX), "Todo must have a legal Todo category")
-      //   .get();
-      // filters.add(eq(CATEGORY_KEY, category));
+
       Pattern pattern = Pattern.compile(Pattern.quote(ctx.queryParam(CATEGORY_KEY)), Pattern.CASE_INSENSITIVE);
       filters.add(regex(CATEGORY_KEY, pattern));
     }
 
-
-
-    // Combine the list of filters into a single filtering document.
     Bson combinedFilter = filters.isEmpty() ? new Document() : and(filters);
 
     return combinedFilter;
   }
 
+ // String category = ctx.queryParamAsClass(CATEGORY_KEY, String.class)
+      //   .check(it -> it.matches(CATEGORY_REGEX), "Todo must have a legal Todo category")
+      //   .get();
+      // filters.add(eq(CATEGORY_KEY, category));
 
-  //****** */
+
   private Bson constructSortingOrder(Context ctx) {
 
     String sortBy = Objects.requireNonNullElse(ctx.queryParam("orderBy"), "owner");
