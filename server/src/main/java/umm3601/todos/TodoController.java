@@ -6,7 +6,7 @@ import static com.mongodb.client.model.Filters.regex;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -34,13 +34,13 @@ public class TodoController implements Controller {
   private static final String API_TODOS = "/api/todos";
   private static final String API_TODO_BY_ID = "/api/todos/{id}";
 
-  static final String LIMIT_KEY = "limit";
+  public static final String LIMIT_KEY = "limit";
   public static final String STATUS_KEY = "status";
   public static final String BODY_CONTAINS_KEY = "body";
   public static final String OWNER_KEY = "owner";
   public static final String CATEGORY_KEY = "category";
   public static final String SORT_ORDER_KEY = "sortorder";
-  private static final String CATEGORY_REGEX = "^(video games|homework|groceries|software design)$";
+  //private static final String CATEGORY_REGEX = "^(video games|homework|groceries|software design)$";
   private final JacksonMongoCollection<Todo> todoCollection;
 
   /**
@@ -64,17 +64,17 @@ public class TodoController implements Controller {
    */
   public void getTodo(Context ctx) {
     String id = ctx.pathParam("id");
-    Todo Todo;
+    Todo todo;
 
     try {
-      Todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
+      todo = todoCollection.find(eq("_id", new ObjectId(id))).first();
     } catch (IllegalArgumentException e) {
       throw new BadRequestResponse("The requested Todo id wasn't a legal Mongo Object ID.");
     }
-    if (Todo == null) {
+    if (todo == null) {
       throw new NotFoundResponse("The requested Todo was not found");
     } else {
-      ctx.json(Todo);
+      ctx.json(todo);
       ctx.status(HttpStatus.OK);
     }
   }
@@ -100,6 +100,9 @@ public class TodoController implements Controller {
 
     ctx.status(HttpStatus.OK);
   }
+// filtering the todos by status, body, category, and owner.
+// Implementing an api/todos?status=complete (or incomplete) endpoint
+// this will let us filter the todos and only return the complete (or incomplete) ones
 
   private Bson constructFilter(Context ctx) {
     List<Bson> filters = new ArrayList<>();
@@ -107,11 +110,11 @@ public class TodoController implements Controller {
       String statusParam = ctx.queryParam(STATUS_KEY);
       boolean targetStatus;
       if (statusParam.equalsIgnoreCase("complete") || statusParam.equalsIgnoreCase("true")) {
-      targetStatus = true;
+        targetStatus = true;
       } else if (statusParam.equalsIgnoreCase("incomplete") || statusParam.equalsIgnoreCase("false")) {
-      targetStatus = false;
+        targetStatus = false;
       } else {
-      throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'"); // throws an error if the status is not complete or incomplete
+        throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'"); // Will throw an error if the status is not complete or incomplete
       }
       filters.add(eq(STATUS_KEY, targetStatus));
     }
@@ -143,16 +146,15 @@ public class TodoController implements Controller {
 
 
   private Bson constructSortingOrder(Context ctx) {
-
+  // here we are specifying the order in which we want the return todos to be in
     String sortBy = Objects.requireNonNullElse(ctx.queryParam("orderBy"), "owner");
     String sortOrder = Objects.requireNonNullElse(ctx.queryParam("sortorder"), "asc");
     Bson sortingOrder = sortOrder.equals("desc") ? Sorts.descending(sortBy) : Sorts.ascending(sortBy);
     return sortingOrder;
   }
-
-
-
-///**************
+//Implement an api/todos?limit=7 API endpoint, which lets you specify the maximum
+//number of todos that the server returns.
+//this is the method for limit, the limit is set to 0 (no limit)
   private int limit(Context ctx) {
     int targetLimit = (int) todoCollection.countDocuments();
     if (ctx.queryParamMap().containsKey(LIMIT_KEY)) {
@@ -167,10 +169,6 @@ public class TodoController implements Controller {
     }
     return targetLimit;
   }
-
-
-
-
 
 
   /**
