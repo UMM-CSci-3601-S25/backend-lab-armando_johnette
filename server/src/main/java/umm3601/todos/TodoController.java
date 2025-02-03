@@ -100,7 +100,10 @@ public class TodoController implements Controller {
 
     ctx.status(HttpStatus.OK);
   }
-
+// filtering the todos by status, body, category, and owner.
+// Implementing an api/todos?status=complete (or incomplete) endpoint
+// this will let us filter the todos and only return the complete (or incomplete) ones
+  
   private Bson constructFilter(Context ctx) {
     List<Bson> filters = new ArrayList<>();
     if (ctx.queryParamMap().containsKey(STATUS_KEY)) {
@@ -111,8 +114,7 @@ public class TodoController implements Controller {
       } else if (statusParam.equalsIgnoreCase("incomplete") || statusParam.equalsIgnoreCase("false")) {
         targetStatus = false;
       } else {
-        // throws an error if the status is not complete or incomplete
-        throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'");
+        throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'"); // Will throw an error if the status is not complete or incomplete
       }
       filters.add(eq(STATUS_KEY, targetStatus));
     }
@@ -144,16 +146,15 @@ public class TodoController implements Controller {
 
 
   private Bson constructSortingOrder(Context ctx) {
-
+  // here we are specifying the order in which we want the return todos to be in
     String sortBy = Objects.requireNonNullElse(ctx.queryParam("orderBy"), "owner");
     String sortOrder = Objects.requireNonNullElse(ctx.queryParam("sortorder"), "asc");
     Bson sortingOrder = sortOrder.equals("desc") ? Sorts.descending(sortBy) : Sorts.ascending(sortBy);
     return sortingOrder;
   }
-
-
-
-///**************
+//Implement an api/todos?limit=7 API endpoint, which lets you specify the maximum
+//number of todos that the server returns.
+//this is the method for limit, the limit is set to 0 (no limit)
   private int limit(Context ctx) {
     int targetLimit = (int) todoCollection.countDocuments();
     if (ctx.queryParamMap().containsKey(LIMIT_KEY)) {
@@ -168,10 +169,6 @@ public class TodoController implements Controller {
     }
     return targetLimit;
   }
-
-
-
-
 
 
   /**
