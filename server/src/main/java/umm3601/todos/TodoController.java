@@ -114,7 +114,8 @@ public class TodoController implements Controller {
       } else if (statusParam.equalsIgnoreCase("incomplete") || statusParam.equalsIgnoreCase("false")) {
         targetStatus = false;
       } else {
-        throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'"); // Will throw an error if the status is not complete or incomplete
+        throw new BadRequestResponse("Todo status must be 'complete', 'incomplete', 'true', or 'false'");
+        // Will throw an error if the status is not complete or incomplete
       }
       filters.add(eq(STATUS_KEY, targetStatus));
     }
